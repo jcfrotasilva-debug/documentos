@@ -87,3 +87,80 @@ Healthcheck: `GET /api/health` deve responder `{"ok":true}`.
 - [ ] `DATABASE_URL` de produção somente no cofre de segredos
 - [ ] Backups automáticos ativos no banco definitivo
 - [ ] Rotina de exportação CSV periódica do acervo (Relatórios → Exportar)
+
+---
+
+## Erros comuns (e a causa exata)
+
+### "A server error occurred. Reload to try again." ao abrir o site
+
+Esse é o erro genérico do Next.js quando uma exceção não tratada acontece no servidor. **Em 9 de cada 10 casos a
+causa é a conexão com o banco no ambiente da Vercel.** As quatro origens mais frequentes:
+
+**1. Variáveis de ambiente não cadastradas na Vercel.**
+A Vercel **não lê** os arquivos `.env` do repositório — eles servem apenas para o desenvolvimento local. Se
+`DATABASE_URL` não existir no ambiente, o app não tem como abrir o pool.
+→ *Project → Settings → Environment Variables* → cadastre `DATABASE_URL`, `SUPABASE_URL`,
+`SUPABASE_ANON_KEY`, `SUPABASE_TABELAS` e `HABILITAR_DADOS_DEMO=false` em **Production e Preview** → **Redeploy**
+(variáveis só entram no build seguinte).
+
+**2. Arquivo `.env` do repositório sendo usado em produção.**
+O Next.js carrega `.env` **também em produção**. Se o arquivo versionado aponta para
+`postgresql://postgres:postgres@127.0.0.1:5432/app_db`, o deploy tenta conectar ao "localhost" da função
+serverless — que não existe — e a página quebra. O projeto agora tem `.gitignore` ignorando `.env`/`.env.*`, e o
+`/diagnostico` avisa quando detecta esse caso (`localhostEmNuvem: true`).
+→ Rode `git rm --cached .env`, confirme que `.env` não está no deploy e cadastre as variáveis no painel da Vercel.
+Valores do painel **têm precedência** sobre o arquivo `.env`, então cadastrá-los já resolve.
+
+**3. Conexão direta do Supabase (IPv6) — a causa mais traiçoeira.**
+O host `db.<ref>.supabase.co` responde **apenas em IPv6** por padrão, e as funções serverless da Vercel não têm
+IPv6 → o driver falha com `ENOTFOUND`/`ETIMEDOUT` mesmo com a senha correta.
+→ Use o **Connection Pooler** (IPv4):
+
+```
+DATABASE_URL=postgresql://postgres.<ref>:<SENHA>@aws-0-<região>.pooler.supabase.com:6543/postgres?pgbouncer=true
+```
+
+O valor exato está em *Supabase → Project Settings → Database → Connection pooling → Session/Transaction*.
+
+**4. SSL obrigatório.**
+Servidores gerenciados recusam conexão sem TLS. O SICED ativa SSL automaticamente para qualquer host remoto —
+basta **não** incluir `?sslmode=disable` na URL.
+
+**5. Tabelas não criadas no banco de produção.**
+Se o banco é novo, falta rodar a migração: `relation "documentos" does not exist`.
+→ Rode `npx drizzle-kit push` apontando para a URL de produção, ou cole `supabase/schema.sql` no SQL Editor do
+Supabase (script idempotente, pode rodar mais de uma vez).
+
+### Como diagnosticar em 30 segundos
+
+1. Abra **`/api/health`** — resposta com o motivo exato:
+   ```json
+   { "conectado": false, "erro": "getaddrinfo ENOTFOUND db.xxx.supabase.co",
+     "dica": "O host é a conexão DIRETA do Supabase (IPv6)..." }
+   ```
+2. Abra **`/diagnostico`** — mostra host/porta/usuário (sem senha), se o SSL foi ativado, se está passando pelo
+   pooler, quais tabelas existem e quais variáveis de ambiente estão definidas.
+3. Qualquer tela com erro exibe a causa + as orientações acima, e registra um `digest` para cruzar com os logs
+   (*Vercel → Deployments → Functions → Runtime Logs*).
+
+### Ajustes feitos no código justamente para isso
+
+- **Conexão preguiçosa:** antes, a ausência de `DATABASE_URL` lançava exceção no carregamento do módulo e derrubava
+  *todas* as rotas antes de qualquer tratamento. Agora a falha só ocorre na primeira consulta, com mensagem clara e
+  tratável (a página mostra o diagnóstico em vez de um erro cru).
+- **SSL automático** para hosts remotos e **timeouts** de conexão (15s) para o build/render não travar.
+- **Pool reutilizado** via `globalThis`, com `max` reduzido em hosts remotos (padrão 3) para não estourar o limite
+  do pooler em ambiente serverless.
+- **`serverExternalPackages: ["pg"]`** no `next.config.ts`: evita falhas de bundling do driver `pg` na Vercel.
+- **`error.tsx` e `global-error.tsx`:** no lugar da tela genérica, aparece a causa e o passo a passo.
+- **`/api/health` retorna 503 com diagnóstico** quando o banco está inacessível ou a estrutura está incompleta.
+
+### Checklist de verificação pós-deploy
+
+```bash
+curl -s https://SEU-DOMINIO/api/health | python -m json.tool   # espera {"ok": true}
+```
+
+- `ok: true` → banco conectado, 7 tabelas criadas, base oficial configurada.
+- `ok: false` → leia `banco.erro` e `banco.dica`; a correção está em uma das quatro causas acima.

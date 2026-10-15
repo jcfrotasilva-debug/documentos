@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { DiagnosticoFalha } from "@/components/DiagnosticoFalha";
 import { NavLateral } from "@/components/NavLateral";
 import { botaoClasses } from "@/components/ui";
+import { diagnosticarBanco, infoConexao } from "@/db";
 import { buscarConfiguracao } from "@/lib/services/documentos";
 import "./globals.css";
 
@@ -13,6 +15,25 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
+  /* Verificação de integridade do banco antes de renderizar as páginas:
+     evita a tela genérica de "server error" quando o ambiente está mal configurado. */
+  const banco = await diagnosticarBanco();
+  const pronto = banco.configurado && banco.conectado && banco.faltando.length === 0;
+
+  if (!pronto) {
+    return (
+      <html lang="pt-BR">
+        <body className="min-h-screen bg-slate-100 px-4 py-10 text-slate-900 antialiased">
+          <DiagnosticoFalha
+            banco={banco}
+            conexao={infoConexao()}
+            ambiente={process.env.NODE_ENV === "production" ? "produção" : "desenvolvimento"}
+          />
+        </body>
+      </html>
+    );
+  }
+
   let sigla = "EEPMF";
   let orgao = "Unidade escolar não configurada";
   try {
@@ -21,7 +42,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     const rotulo = [config?.orgaoNome, config?.orgaoUnidade].map((valor) => valor?.trim()).filter(Boolean);
     if (rotulo.length > 0) orgao = rotulo.join(" · ");
   } catch {
-    /* banco indisponível: layout segue com padrões */
+    /* banco recém-validado: layout segue com os padrões */
   }
 
   return (
@@ -41,6 +62,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <Link href="/diagnostico" className={botaoClasses("fantasma")}>
+                  Diagnóstico
+                </Link>
                 <Link href="/documentos" className={botaoClasses("secundario")}>
                   Consultar acervo
                 </Link>

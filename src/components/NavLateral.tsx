@@ -13,6 +13,7 @@ const ITENS = [
   { href: "/setores", rotulo: "Unidades / setores", icone: "◫" },
   { href: "/configuracoes", rotulo: "Numeração e órgão", icone: "⚙" },
   { href: "/supabase", rotulo: "Base oficial (Supabase)", icone: "☁" },
+  { href: "/diagnostico", rotulo: "Diagnóstico do ambiente", icone: "◎" },
 ];
 
 export function NavLateral({ sigla, orgao }: { sigla: string; orgao: string }) {
