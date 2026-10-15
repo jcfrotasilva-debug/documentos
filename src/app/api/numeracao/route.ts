@@ -4,7 +4,8 @@ import { db } from "@/db";
 import { numeracao } from "@/db/schema";
 import { CONFIG_TIPO, TIPOS_DOCUMENTO, prefixoPadrao, type Movimentacao, type TipoDocumento } from "@/lib/domain";
 import { hojeISO } from "@/lib/format";
-import { listarNumeracao, numeracaoDoAno } from "@/lib/services/documentos";
+import { listarNumeracao } from "@/lib/services/documentos";
+import { painelSequencia } from "@/lib/services/sequencia";
 import { numeracaoInputSchema, primeiraMensagemErro } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +17,12 @@ function anoDe(request: NextRequest): number {
 
 export async function GET(request: NextRequest) {
   const ano = anoDe(request);
-  const [linhas, contadores] = await Promise.all([listarNumeracao(ano), numeracaoDoAno(ano)]);
+  const [linhas, sequencias] = await Promise.all([listarNumeracao(ano), painelSequencia(ano)]);
   return Response.json({
     ano,
     numeracao: linhas,
-    chavesLegadas: contadores
+    sequencias,
+    chavesLegadas: linhas
       .filter((linha) => linha.chaveLegada)
       .map((linha) => ({ chave: linha.chaveLegada, movimentacao: linha.movimentacao, tipo: linha.tipo })),
   });

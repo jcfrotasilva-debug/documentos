@@ -112,6 +112,21 @@ export const numeracaoInputSchema = z.object({
   ultimoNumero: z.coerce.number().int().min(0),
 });
 
+/** Ajuste da sequência: o operador informa o PRÓXIMO número que deseja emitir. */
+export const ajusteSequenciaSchema = z.object({
+  movimentacao: z.enum([...MOVIMENTACOES] as [string, ...string[]]).default("EXPEDICAO"),
+  tipo: z.enum([...TIPOS_DOCUMENTO] as [string, ...string[]]),
+  ano: z.coerce.number().int().min(1990).max(2200),
+  proximo: z.coerce.number().int().min(1, "O próximo número deve ser maior que zero").max(99999999),
+  confirmarDuplicidade: z.coerce.boolean().optional().default(false),
+});
+
+export const recalculoSequenciaSchema = z.object({
+  movimentacao: z.enum([...MOVIMENTACOES] as [string, ...string[]]).optional(),
+  tipo: z.enum([...TIPOS_DOCUMENTO] as [string, ...string[]]).optional(),
+  ano: z.coerce.number().int().min(1990).max(2200),
+});
+
 export const configuracaoInputSchema = z.object({
   orgaoNome: textoObrigatorio("Órgão", 200),
   orgaoUnidade: textoObrigatorio("Unidade", 200),

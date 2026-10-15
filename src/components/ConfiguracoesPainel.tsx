@@ -32,13 +32,18 @@ export type ConfiguracaoValores = {
 export type LinhaNumeracao = {
   movimentacao: Movimentacao;
   tipo: TipoDocumento;
+  ano: number;
   prefixo: string;
   digitos: number;
   ultimoNumero: number;
-  chaveLegada?: string | null;
+  proximoNumero: string;
+  ultimoNoAcervo: number;
+  documentos: number;
+  proximoJaUsado: boolean;
+  chaveLegada: string | null;
 };
 
-const chave = (linha: LinhaNumeracao) => `${linha.movimentacao}:${linha.tipo}`;
+const chave = (linha: { movimentacao: Movimentacao; tipo: TipoDocumento }) => `${linha.movimentacao}:${linha.tipo}`;
 
 export function ConfiguracoesPainel({
   configuracao,
@@ -55,21 +60,14 @@ export function ConfiguracoesPainel({
   const [form, setForm] = useState(configuracao);
   const [linhas, setLinhas] = useState(numeracao);
   const [anoSel, setAnoSel] = useState(ano);
+  /* Valor digitado em "próximo número" por linha (ainda não salvo). */
+  const [proximos, setProximos] = useState<Record<string, string>>({});
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState<string | null>(null);
 
   const atualizarForm = (campo: keyof ConfiguracaoValores, valor: string) =>
     setForm((atual) => ({ ...atual, [campo]: valor }));
-
-  const atualizarLinha = (movimentacao: Movimentacao, tipo: TipoDocumento, campo: string, valor: string | number) =>
-    setLinhas((atual) =>
-      atual.map((linha) =>
-        linha.movimentacao === movimentacao && linha.tipo === tipo
-          ? ({ ...linha, [campo]: valor } as LinhaNumeracao)
-          : linha,
-      ),
-    );
 
   const salvarOrgao = async (evento: React.FormEvent) => {
     evento.preventDefault();
@@ -95,29 +93,89 @@ export function ConfiguracoesPainel({
     }
   };
 
-  const salvarNumeracao = async (linha: LinhaNumeracao) => {
+  const recarregar = (novoAno: number) => {
+    fetch(`/api/numeracao?ano=${novoAno}`)
+      .then((resposta) => resposta.json())
+      .then((dados: { sequencias?: LinhaNumeracao[] }) => {
+        if (dados.sequencias) setLinhas(dados.sequencias);
+      })
+      .catch(() => undefined);
+  };
+
+  const definirProximo = async (linha: LinhaNumeracao, confirmarDuplicidade = false) => {
+    const bruto = proximos[chave(linha)];
+    const valor = Number(String(bruto ?? "").replace(/\D/g, ""));
     setErro(null);
     setMensagem(null);
-    setSalvando(chave(linha));
+    if (!Number.isInteger(valor) || valor < 1) {
+      setErro("Informe um número inteiro maior que zero.");
+      return;
+    }
+    setSalvando(`definir:${chave(linha)}`);
     try {
-      const resposta = await fetch("/api/numeracao", {
-        method: "PUT",
+      const resposta = await fetch("/api/numeracao/ajustar", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           movimentacao: linha.movimentacao,
           tipo: linha.tipo,
           ano: anoSel,
-          prefixo: linha.prefixo,
-          digitos: linha.digitos,
-          ultimoNumero: linha.ultimoNumero,
+          proximo: valor,
+          confirmarDuplicidade,
         }),
       });
-      const dados = (await resposta.json()) as { erro?: string };
-      if (!resposta.ok) setErro(dados.erro ?? "Não foi possível salvar a numeração.");
+      const dados = (await resposta.json()) as {
+        ok?: boolean;
+        erro?: string;
+        aviso?: string;
+        mensagem?: string;
+        linha?: LinhaNumeracao;
+      };
+      if (!resposta.ok || !dados.ok) {
+        if (resposta.status === 409) {
+          if (window.confirm(`${dados.erro ?? "Número já usado no acervo."}\n\nDeseja definir mesmo assim?`)) {
+            await definirProximo(linha, true);
+            return;
+          }
+          setErro(dados.erro ?? "Número já consta no acervo.");
+        } else {
+          setErro(dados.erro ?? "Não foi possível ajustar a sequência.");
+        }
+        return;
+      }
+      setMensagem(dados.mensagem ?? "Sequência ajustada.");
+      if (dados.aviso) setErro(dados.aviso);
+      setProximos((atual) => ({ ...atual, [chave(linha)]: "" }));
+      recarregar(anoSel);
+      router.refresh();
+    } catch {
+      setErro("Falha de comunicação com o servidor.");
+    } finally {
+      setSalvando(null);
+    }
+  };
+
+  const recalcularTudo = async () => {
+    if (
+      !window.confirm(
+        "Igualar todas as sequências ao maior número já lançado no acervo deste exercício? Use quando o acervo estiver completo.",
+      )
+    )
+      return;
+    setErro(null);
+    setMensagem(null);
+    setSalvando("recalcular");
+    try {
+      const resposta = await fetch("/api/numeracao/ajustar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "recalcular", ano: anoSel }),
+      });
+      const dados = (await resposta.json()) as { ok?: boolean; erro?: string; mensagem?: string };
+      if (!resposta.ok || !dados.ok) setErro(dados.erro ?? "Não foi possível recalcular.");
       else {
-        setMensagem(
-          `Numeração de ${CONFIG_MOVIMENTACAO[linha.movimentacao].label} · ${CONFIG_TIPO[linha.tipo].label} atualizada (${anoSel}).`,
-        );
+        setMensagem(dados.mensagem ?? "Sequências recalculadas.");
+        recarregar(anoSel);
         router.refresh();
       }
     } catch {
@@ -129,31 +187,8 @@ export function ConfiguracoesPainel({
 
   const trocarAno = (novoAno: number) => {
     setAnoSel(novoAno);
-    fetch(`/api/numeracao?ano=${novoAno}`)
-      .then((resposta) => resposta.json())
-      .then(
-        (dados: {
-          numeracao?: { movimentacao: Movimentacao; tipo: TipoDocumento; prefixo: string; digitos: number; ultimoNumero: number; chaveLegada: string | null }[];
-        }) => {
-          const mapa = new Map((dados.numeracao ?? []).map((linha) => [chave(linha), linha]));
-          setLinhas(
-            MOVIMENTACOES.flatMap((movimentacao) =>
-              TIPOS_DOCUMENTO.map((tipo) => {
-                const encontrada = mapa.get(`${movimentacao}:${tipo}`);
-                return {
-                  movimentacao,
-                  tipo,
-                  prefixo: encontrada?.prefixo ?? prefixoPadrao(movimentacao, tipo),
-                  digitos: encontrada?.digitos ?? 5,
-                  ultimoNumero: encontrada?.ultimoNumero ?? 0,
-                  chaveLegada: encontrada?.chaveLegada ?? null,
-                };
-              }),
-            ),
-          );
-        },
-      )
-      .catch(() => undefined);
+    setProximos({});
+    recarregar(novoAno);
   };
 
   return (
@@ -164,38 +199,49 @@ export function ConfiguracoesPainel({
       {erro && <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{erro}</p>}
 
       <Card
-        titulo="Regras de numeração automática"
-        subtitulo="Chave de numeração: movimentação + espécie + exercício, no mesmo padrão dos contadores da base oficial (EXPEDIÇÃO_OFÍCIO_2026)."
+        titulo="Sequência de numeração — definir o próximo número"
+        subtitulo="Digite o PRÓXIMO número que deve ser emitido. O sistema grava um a menos como último emitido (ex.: 80 → próxima emissão OF-00080/2026)."
         acoes={
-          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-            Exercício
-            <select
-              className={cx(inputClasses, "w-28 py-1")}
-              value={anoSel}
-              onChange={(evento) => trocarAno(Number(evento.target.value))}
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+              Exercício
+              <select
+                className={cx(inputClasses, "w-28 py-1")}
+                value={anoSel}
+                onChange={(evento) => trocarAno(Number(evento.target.value))}
+              >
+                {Array.from(new Set([anoSel, ...anos]))
+                  .sort((a, b) => b - a)
+                  .map((valor) => (
+                    <option key={valor} value={valor}>
+                      {valor}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className={cx(botaoClasses("secundario"), "px-3 py-2 text-xs")}
+              onClick={recalcularTudo}
+              disabled={salvando !== null}
+              title="Iguala cada sequência ao maior número já lançado no acervo"
             >
-              {Array.from(new Set([anoSel, ...anos]))
-                .sort((a, b) => b - a)
-                .map((valor) => (
-                  <option key={valor} value={valor}>
-                    {valor}
-                  </option>
-                ))}
-            </select>
-          </label>
+              {salvando === "recalcular" ? "Recalculando..." : "Igualar ao acervo"}
+            </button>
+          </div>
         }
         espacamento="p-0"
       >
         <div className="overflow-x-auto scroll-fino">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1080px] text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wider text-slate-500">
                 <th className="px-5 py-2 font-semibold">Movimentação</th>
                 <th className="px-3 py-2 font-semibold">Espécie</th>
-                <th className="px-3 py-2 font-semibold">Prefixo</th>
-                <th className="px-3 py-2 font-semibold">Dígitos</th>
-                <th className="px-3 py-2 font-semibold">Último nº</th>
-                <th className="px-3 py-2 font-semibold">Próximo número</th>
+                <th className="px-3 py-2 font-semibold">Último emitido</th>
+                <th className="px-3 py-2 font-semibold">Maior no acervo</th>
+                <th className="px-3 py-2 font-semibold">Definir próximo nº</th>
+                <th className="px-3 py-2 font-semibold">Resultado</th>
                 <th className="px-5 py-2 text-right font-semibold">Ação</th>
               </tr>
             </thead>
@@ -204,62 +250,73 @@ export function ConfiguracoesPainel({
                 TIPOS_DOCUMENTO.map((tipo) => {
                   const linha = linhas.find((item) => item.movimentacao === movimentacao && item.tipo === tipo);
                   if (!linha) return null;
+                  const valorDigitado = proximos[chave(linha)] ?? "";
+                  const previa = valorDigitado
+                    ? montarNumero(linha.prefixo || prefixoPadrao(movimentacao, tipo), Number(valorDigitado) || 0, linha.digitos, anoSel)
+                    : linha.proximoNumero;
+                  const divergente = linha.ultimoNoAcervo > linha.ultimoNumero;
                   return (
                     <tr key={chave(linha)} className="hover:bg-slate-50/70">
                       <td className="px-5 py-3">
-                        <span className={cx("rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset", CONFIG_MOVIMENTACAO[movimentacao].chip)}>
+                        <span
+                          className={cx(
+                            "rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset",
+                            CONFIG_MOVIMENTACAO[movimentacao].chip,
+                          )}
+                        >
                           {CONFIG_MOVIMENTACAO[movimentacao].seta} {CONFIG_MOVIMENTACAO[movimentacao].label}
                         </span>
                       </td>
                       <td className="px-3 py-3">
                         <p className="font-medium text-slate-800">{CONFIG_TIPO[tipo].label}</p>
-                        <p className="text-[11px] text-slate-500">origem: {CONFIG_TIPO[tipo].legado}</p>
+                        <p className="text-[11px] text-slate-500">
+                          {linha.documentos} documento(s){linha.chaveLegada ? ` · contador: ${linha.chaveLegada}` : ""}
+                        </p>
                       </td>
-                      <td className="px-3 py-3">
-                        <input
-                          className={cx(inputClasses, "w-24 py-1 font-mono uppercase")}
-                          maxLength={14}
-                          value={linha.prefixo}
-                          onChange={(evento) => atualizarLinha(movimentacao, tipo, "prefixo", evento.target.value)}
-                        />
+                      <td className="px-3 py-3 tabular-nums text-slate-700">
+                        {linha.ultimoNumero > 0 ? linha.ultimoNumero : <span className="text-slate-400">—</span>}
+                      </td>
+                      <td className="px-3 py-3 tabular-nums">
+                        <span className={divergente ? "font-semibold text-amber-700" : "text-slate-700"}>
+                          {linha.ultimoNoAcervo > 0 ? linha.ultimoNoAcervo : "—"}
+                        </span>
+                        {divergente && (
+                          <span className="block text-[10px] text-amber-700">acervo à frente da sequência</span>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <input
                           type="number"
                           min={1}
-                          max={8}
-                          className={cx(inputClasses, "w-20 py-1")}
-                          value={linha.digitos}
-                          onChange={(evento) => atualizarLinha(movimentacao, tipo, "digitos", Number(evento.target.value))}
+                          inputMode="numeric"
+                          placeholder={String(linha.ultimoNumero + 1)}
+                          className={cx(inputClasses, "w-28 py-1 tabular-nums")}
+                          value={valorDigitado}
+                          onChange={(evento) =>
+                            setProximos((atual) => ({ ...atual, [chave(linha)]: evento.target.value }))
+                          }
+                          onKeyDown={(evento) => {
+                            if (evento.key === "Enter") {
+                              evento.preventDefault();
+                              void definirProximo(linha);
+                            }
+                          }}
                         />
                       </td>
                       <td className="px-3 py-3">
-                        <input
-                          type="number"
-                          min={0}
-                          className={cx(inputClasses, "w-24 py-1 tabular-nums")}
-                          value={linha.ultimoNumero}
-                          onChange={(evento) =>
-                            atualizarLinha(movimentacao, tipo, "ultimoNumero", Number(evento.target.value))
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-3 font-mono text-xs font-semibold text-brand-700">
-                        {montarNumero(linha.prefixo || prefixoPadrao(movimentacao, tipo), linha.ultimoNumero + 1, linha.digitos, anoSel)}
-                        {linha.chaveLegada && (
-                          <span className="block font-sans text-[10px] font-normal text-slate-400">
-                            contador: {linha.chaveLegada}
-                          </span>
+                        <span className="font-mono text-xs font-semibold text-brand-700">{previa}</span>
+                        {linha.proximoJaUsado && (
+                          <span className="block text-[10px] font-semibold text-rose-600">já usado no acervo</span>
                         )}
                       </td>
                       <td className="px-5 py-3 text-right">
                         <button
                           type="button"
                           className={cx(botaoClasses("secundario"), "px-2 py-1 text-xs")}
-                          disabled={salvando === chave(linha)}
-                          onClick={() => salvarNumeracao(linha)}
+                          disabled={salvando === `definir:${chave(linha)}`}
+                          onClick={() => definirProximo(linha)}
                         >
-                          {salvando === chave(linha) ? "Salvando..." : "Salvar"}
+                          {salvando === `definir:${chave(linha)}` ? "Salvando..." : "Definir"}
                         </button>
                       </td>
                     </tr>
@@ -269,9 +326,21 @@ export function ConfiguracoesPainel({
             </tbody>
           </table>
         </div>
-        <p className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-500">
-          A numeração de recebimento usa o prefixo &ldquo;R-&rdquo; para não colidir com a sequência de expedição da mesma espécie.
-        </p>
+        <div className="space-y-1 border-t border-slate-100 px-5 py-3 text-[11px] text-slate-500">
+          <p>
+            <strong>Último emitido</strong> é o valor que o sistema usa para gerar o próximo número.{" "}
+            <strong>Maior no acervo</strong> é o maior número já lançado nos documentos — se ele estiver à frente, clique
+            em &ldquo;Igualar ao acervo&rdquo;.
+          </p>
+          <p>
+            Ao definir um número que já existe no acervo, o sistema avisa e pede confirmação — útil para reemitir um
+            documento cancelado.
+          </p>
+          <p>
+            Prefixo e quantidade de dígitos por espécie são ajustáveis na API (<code>/api/numeracao</code>, campos
+            <code> prefixo</code> e <code>digitos</code>).
+          </p>
+        </div>
       </Card>
 
       <Card titulo="Dados institucionais" subtitulo="Informações impressas no cabeçalho dos documentos expedidos.">

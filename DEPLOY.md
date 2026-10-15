@@ -212,3 +212,57 @@ por consumir menos conexões; o modo sessão (5432) tem limite menor e pode gera
 Banco novo não conhece os contadores oficiais, então a primeira emissão é `OF-00001/2026`. Para continuar a
 sequência real, abra **Base oficial (Supabase) → Importar**: a sincronização traz os documentos e ajusta os
 contadores (`EXPEDIÇÃO_OFÍCIO_2026 → 79`, etc.), passando o próximo número para `OF-00080/2026`.
+
+---
+
+## Como dar continuidade à numeração (definir o próximo número)
+
+Cada sequência é identificada por **movimentação + espécie + exercício** (ex.: `EXPEDIÇÃO · Ofício · 2026`). Para
+continuar de onde o acervo parou, informe o **próximo número que deve ser emitido** — o sistema grava um a menos
+como último emitido.
+
+Exemplo: se o próximo Ofício deve ser **80**, informe `80`; o próximo documento sai `OF-00080/2026`.
+
+### Onde alterar (duas portas, mesmo motor)
+
+1. **Ao cadastrar**: *Novo documento* → bloco **“Sequência: próximo Ofício nesta movimentação”** → botão
+   **“Alterar sequência (dar continuidade)”** → digite `80` → **Aplicar sequência**. O campo de número do formulário
+   já passa a exibir `OF-00080/2026`.
+2. **Em lote**: *Numeração e órgão* → coluna **“Definir próximo nº”** → preencha e clique em **Definir**. A tabela
+   mostra, por linha: último emitido, maior número existente no acervo, quantos documentos há no grupo e o número
+   resultante. O botão **“Igualar ao acervo”** sincroniza todas as sequências com o maior número já lançado.
+
+### API
+
+```bash
+# definir o próximo número
+curl -X POST https://SEU-DOMINIO/api/numeracao/ajustar \
+  -H 'Content-Type: application/json' \
+  -d '{"movimentacao":"EXPEDICAO","tipo":"OFICIO","ano":2026,"proximo":80}'
+
+# igualar todas as sequências ao maior número do acervo
+curl -X POST https://SEU-DOMINIO/api/numeracao/ajustar \
+  -H 'Content-Type: application/json' \
+  -d '{"acao":"recalcular","ano":2026}'
+```
+
+### Proteções
+
+- Se o número informado **já existir no acervo**, a API responde **409** com o motivo e a interface pede
+  confirmação antes de continuar (útil para reemitir documento cancelado).
+- O grupo **RECEBIMENTO** recebe prefixo próprio (`R-OF`, `R-PRT`, …) para não colidir com a expedição da mesma
+  espécie.
+- Cada exercício tem sua própria sequência, reiniciada em 1 de janeiro.
+
+### Valores de partida já aplicados no banco de produção
+
+| Sequência | Último emitido | Próximo |
+|---|---|---|
+| Expedição · Ofício | 79 | `OF-00080/2026` |
+| Expedição · Relação de Remessa | 49 | `RR-00050/2026` |
+| Expedição · Protocolo | 9 | `PRT-00010/2026` |
+| Expedição · Processo | 76 | `PROC-00077/2026` |
+| Expedição · Ofício APM | 1 | `OFAPM-00002/2026` |
+| Recebimento · Protocolo | 27 | `R-PRT-00028/2026` |
+
+Ajuste qualquer valor pela tela *Numeração e órgão* conforme a realidade da unidade escolar.

@@ -54,6 +54,11 @@ export function DocumentoForm({
   const [usarManual, setUsarManual] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  /* Ajuste rápido da sequência: definir qual deve ser o próximo número emitido. */
+  const [ajusteAberto, setAjusteAberto] = useState(false);
+  const [proximoDesejado, setProximoDesejado] = useState("");
+  const [ajustando, setAjustando] = useState(false);
+  const [avisoSequencia, setAvisoSequencia] = useState<string | null>(null);
 
   const ano = Number(form.dataDocumento.slice(0, 4)) || anoAtual;
 
@@ -64,18 +69,20 @@ export function DocumentoForm({
     [],
   );
 
+  const carregarPrevisoes = useCallback(async (exercicio: number) => {
+    try {
+      const resposta = await fetch(`/api/documentos/proximo-numero?ano=${exercicio}`);
+      if (!resposta.ok) return;
+      const dados = (await resposta.json()) as { numeros?: Previsao[] };
+      if (dados.numeros) setPrevisoes(dados.numeros);
+    } catch {
+      /* mantém a previsão anterior */
+    }
+  }, []);
+
   useEffect(() => {
-    let ativo = true;
-    fetch(`/api/documentos/proximo-numero?ano=${ano}`)
-      .then((resposta) => (resposta.ok ? resposta.json() : null))
-      .then((dados: { numeros?: Previsao[] } | null) => {
-        if (ativo && dados?.numeros) setPrevisoes(dados.numeros);
-      })
-      .catch(() => undefined);
-    return () => {
-      ativo = false;
-    };
-  }, [ano]);
+    void carregarPrevisoes(ano);
+  }, [ano, carregarPrevisoes]);
 
   const previsaoAtual = useMemo(
     () => previsoes.find((item) => item.tipo === form.tipo && item.movimentacao === form.movimentacao),
@@ -107,6 +114,53 @@ export function DocumentoForm({
       return { ...atual, itens };
     });
   };
+
+  async function aplicarSequencia(confirmarDuplicidade: boolean) {
+    const valor = Number(String(proximoDesejado).replace(/\D/g, ""));
+    setErro(null);
+    setAvisoSequencia(null);
+    if (!Number.isInteger(valor) || valor < 1) {
+      setErro("Informe um número inteiro maior que zero para a sequência.");
+      return;
+    }
+    setAjustando(true);
+    try {
+      const resposta = await fetch("/api/numeracao/ajustar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          movimentacao: form.movimentacao,
+          tipo: form.tipo,
+          ano,
+          proximo: valor,
+          confirmarDuplicidade,
+        }),
+      });
+      const dados = (await resposta.json()) as { ok?: boolean; erro?: string; mensagem?: string; aviso?: string };
+      if (!resposta.ok || !dados.ok) {
+        if (resposta.status === 409) {
+          if (window.confirm(`${dados.erro ?? "Número já usado."}\n\nDeseja definir mesmo assim?`)) {
+            await aplicarSequencia(true);
+            return;
+          }
+          setErro(dados.erro ?? "Número já consta no acervo.");
+        } else {
+          setErro(dados.erro ?? "Não foi possível ajustar a sequência.");
+        }
+        return;
+      }
+      await carregarPrevisoes(ano);
+      setUsarManual(false);
+      setAvisoSequencia(
+        `${dados.mensagem ?? "Sequência ajustada."}${dados.aviso ? ` ${dados.aviso}` : ""} O campo de número já mostra o novo valor.`,
+      );
+      setAjusteAberto(false);
+    } catch {
+      setErro("Falha de comunicação com o servidor.");
+    } finally {
+      setAjustando(false);
+    }
+  }
 
   async function enviar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -261,6 +315,83 @@ export function DocumentoForm({
           </Campo>
         </div>
       </Card>
+
+      <div className="no-print rounded-xl border border-slate-200 bg-white px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Sequência: próximo {CONFIG_TIPO[form.tipo].label} nesta movimentação
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              Próximo número automático:{" "}
+              <strong className="font-mono text-brand-700">
+                {previsaoAtual?.numero ?? "—"}
+              </strong>{" "}
+              · exercício {ano}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={cx(botaoClasses("secundario"), "px-3 py-2 text-xs")}
+            onClick={() => {
+              setAjusteAberto((valor) => !valor);
+              setAvisoSequencia(null);
+              setProximoDesejado(String(previsaoAtual?.sequencial ?? ""));
+            }}
+          >
+            {ajusteAberto ? "Fechar ajuste" : "Alterar sequência (dar continuidade)"}
+          </button>
+        </div>
+
+        {ajusteAberto && (
+          <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 md:grid-cols-[220px_1fr_auto] md:items-end">
+            <Campo
+              label={`Próximo ${CONFIG_TIPO[form.tipo].label} deve ser`}
+              dica={`Ex.: digite 80 para a próxima emissão sair OF-00080/${ano}.`}
+            >
+              <input
+                type="number"
+                min={1}
+                inputMode="numeric"
+                className={cx(inputClasses, "tabular-nums")}
+                value={proximoDesejado}
+                placeholder={String(previsaoAtual?.sequencial ?? 1)}
+                onChange={(evento) => setProximoDesejado(evento.target.value)}
+                onKeyDown={(evento) => {
+                  if (evento.key === "Enter") {
+                    evento.preventDefault();
+                    void aplicarSequencia(false);
+                  }
+                }}
+              />
+            </Campo>
+            <p className="text-xs text-slate-600">
+              Resultado:{" "}
+              <strong className="font-mono text-brand-700">
+                {proximoDesejado
+                  ? montarNumero(prefixoPadrao(form.movimentacao, form.tipo), Number(proximoDesejado) || 0, 5, ano)
+                  : "—"}
+              </strong>
+              <span className="mt-1 block text-[11px] text-slate-500">
+                O sistema grava {Number(proximoDesejado || 0) > 0 ? Number(proximoDesejado) - 1 : "—"} como último
+                emitido, então este form passa a gerar o número informado.
+              </span>
+            </p>
+            <button
+              type="button"
+              className={botaoClasses("primario")}
+              disabled={ajustando}
+              onClick={() => aplicarSequencia(false)}
+            >
+              {ajustando ? "Aplicando..." : "Aplicar sequência"}
+            </button>
+          </div>
+        )}
+
+        {avisoSequencia && (
+          <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-800">{avisoSequencia}</p>
+        )}
+      </div>
 
       <Card titulo="Conteúdo, interessado e processo">
         <div className="grid gap-4 md:grid-cols-2">
