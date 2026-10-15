@@ -108,9 +108,22 @@ export default async function DiagnosticoPage() {
           />
           <Linha
             rotulo="Via pooler"
-            valor={conexao.viaPooler ? "sim (recomendado em serverless)" : "não"}
-            tom={conexao.viaPooler ? "text-emerald-700" : "text-amber-700"}
+            valor={
+              conexao.modoPooler === "transacao"
+                ? "sim — modo transação (6543, ideal em serverless)"
+                : conexao.modoPooler === "sessao"
+                  ? "sim — modo sessão (5432)"
+                  : "não (conexão direta)"
+            }
+            tom={conexao.modoPooler === "transacao" ? "text-emerald-700" : conexao.viaPooler ? "text-amber-700" : "text-amber-700"}
           />
+          {conexao.modoPooler === "sessao" && (
+            <Linha
+              rotulo="Recomendação"
+              valor="em serverless prefira o pooler de transação: trocar a porta 5432 por 6543 e acrescentar ?pgbouncer=true"
+              tom="text-amber-700"
+            />
+          )}
           <Linha
             rotulo="Ambiente"
             valor={conexao.localEmNuvem ? "nuvem" : process.env.NODE_ENV === "production" ? "produção local" : "desenvolvimento"}

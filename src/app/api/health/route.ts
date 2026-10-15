@@ -26,6 +26,7 @@ export async function GET() {
         usuario: conexao.usuario,
         ssl: conexao.ssl,
         viaPooler: conexao.viaPooler,
+        modoPooler: conexao.modoPooler,
         conexaoDiretaIpv6: conexao.ipv6Direto,
         localhostEmNuvem: conexao.localEmNuvem,
         emNuvem: emNuvem(),

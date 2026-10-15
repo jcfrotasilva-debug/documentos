@@ -33,7 +33,12 @@ export function DiagnosticoFalha({
     {
       titulo: "Crie a estrutura no banco de produção",
       texto:
-        "Rode npx drizzle-kit push apontando DATABASE_URL para o banco definitivo, ou cole supabase/schema.sql no SQL Editor do Supabase (script idempotente).",
+        "Banco novo e vazio é a causa mais comum: o app conecta, mas não encontra as tabelas (relation \"configuracoes\" does not exist). Rode npx drizzle-kit push --config drizzle.prod.config.ts com a DATABASE_URL de produção, ou cole supabase/schema.sql no SQL Editor do Supabase (script idempotente, roda quantas vezes precisar).",
+    },
+    {
+      titulo: "Prefira o pooler de transação (6543)",
+      texto:
+        "Em serverless, a porta 6543 com ?pgbouncer=true evita esgotamento do pool de conexões (erros \"Max client connections reached\"). A porta 5432 é o pooler de sessão, com limite menor.",
     },
   ];
 
@@ -61,7 +66,12 @@ export function DiagnosticoFalha({
           <div className="rounded-lg bg-white/80 px-3 py-2">
             <dt className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">SSL / pooler</dt>
             <dd className="text-slate-800">
-              {conexao.ssl ? "SSL automático" : "sem SSL"} · {conexao.viaPooler ? "via pooler" : "conexão direta"}
+              {conexao.ssl ? "SSL automático" : "sem SSL"} ·{" "}
+              {conexao.modoPooler === "transacao"
+                ? "pooler (transação 6543)"
+                : conexao.modoPooler === "sessao"
+                  ? "pooler (sessão 5432)"
+                  : "conexão direta"}
             </dd>
           </div>
           <div className="rounded-lg bg-white/80 px-3 py-2">
@@ -86,7 +96,7 @@ export function DiagnosticoFalha({
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white px-6 py-5">
-        <h2 className="text-sm font-semibold text-slate-900">Correção — 4 verificações, na ordem</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Correção — 5 verificações, na ordem</h2>
         <ol className="mt-3 space-y-3">
           {checklist.map((item, indice) => (
             <li key={item.titulo} className="flex gap-3">

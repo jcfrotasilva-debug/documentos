@@ -48,6 +48,7 @@ export type InfoConexao = {
   usuario: string | null;
   ssl: boolean;
   viaPooler: boolean;
+  modoPooler: "transacao" | "sessao" | "direto";
   ipv6Direto: boolean;
   localEmNuvem: boolean;
   origem: "DATABASE_URL" | "ausente";
@@ -76,6 +77,7 @@ export function infoConexao(): InfoConexao {
     usuario: null,
     ssl: false,
     viaPooler: false,
+    modoPooler: "direto",
     ipv6Direto: false,
     localEmNuvem: false,
     origem: bancoConfigurado ? "DATABASE_URL" : "ausente",
@@ -88,6 +90,12 @@ export function infoConexao(): InfoConexao {
     const porta = url.port ? Number(url.port) : 5432;
     const local = ehLocal(host);
     const sslDesativado = (url.searchParams.get("sslmode") ?? "").toLowerCase() === "disable";
+    /* Pooler do Supabase: 6543 = transação (ideal em serverless), 5432 = sessão. */
+    const modoPooler: InfoConexao["modoPooler"] = host.includes("pooler.supabase.com")
+      ? porta === 6543
+        ? "transacao"
+        : "sessao"
+      : "direto";
     return {
       configurado: true,
       host,
@@ -96,6 +104,7 @@ export function infoConexao(): InfoConexao {
       usuario: url.username || null,
       ssl: !local && !sslDesativado,
       viaPooler: host.includes("pooler.supabase.com") || porta === 6543,
+      modoPooler,
       /* Conexão direta do Supabase é IPv6-only por padrão: inalcançável de funções IPv4. */
       ipv6Direto: host.endsWith(".supabase.co") && !host.includes("pooler"),
       /* URL local sendo usada em produção: erro clássico do arquivo .env enviado no deploy. */
@@ -119,7 +128,9 @@ function configPool(): PoolConfig {
 
   const local = ehLocal(url.hostname);
   const sslDesativado = (url.searchParams.get("sslmode") ?? "").toLowerCase() === "disable";
-  const max = Number(process.env.PGPOOL_MAX ?? (local ? 10 : 3));
+  /* Serverless: pool pequeno por instância para não estourar o limite do pooler.
+     O limite efetivo considerando concorrência é controlado por PGPOOL_MAX. */
+  const max = Number(process.env.PGPOOL_MAX ?? (local ? 10 : 2));
 
   return {
     connectionString: DATABASE_URL,
@@ -237,6 +248,15 @@ export async function diagnosticarBanco(): Promise<DiagnosticoBanco> {
     resultado.erro = mensagem;
     if (/ECONNREFUSED/i.test(mensagem) && info.host && ehLocal(info.host)) {
       resultado.dica = MENSAGEM_LOCALHOST_EM_NUVEM;
+    } else if (/Max client connections|remaining connection slots|too many clients|too many connections/i.test(mensagem)) {
+      resultado.dica = info.modoPooler === "sessao"
+        ? "Limite de conexões do pooler de SESSÃO atingido. Em serverless use o pooler de TRANSAÇÃO (porta 6543) e inclua ?pgbouncer=true na DATABASE_URL."
+        : "Limite de conexões atingido. Reduza PGPOOL_MAX (padrão 3) e confirme que a DATABASE_URL usa o pooler, não a conexão direta.";
+    } else if (/Connection terminated|ECONNRESET|server closed the connection/i.test(mensagem)) {
+      resultado.dica =
+        info.modoPooler === "transacao"
+          ? "Conexão encerrada pelo pooler de transação. Confirme o parâmetro ?pgbouncer=true na DATABASE_URL."
+          : "Conexão encerrada inesperadamente: o pooler de sessão reaproveita conexões e pode ser reciclado. Prefira a porta 6543 (?pgbouncer=true) em ambiente serverless.";
     } else if (/ENOTFOUND|EAI_AGAIN|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH/i.test(mensagem)) {
       resultado.dica = info.ipv6Direto
         ? "O host é a conexão DIRETA do Supabase (IPv6). Em funções serverless (Vercel) use o Pooler: postgresql://postgres.<ref>:<SENHA>@aws-0-<região>.pooler.supabase.com:6543/postgres?pgbouncer=true"
@@ -246,6 +266,9 @@ export async function diagnosticarBanco(): Promise<DiagnosticoBanco> {
         "Falha de SSL: o servidor exige conexão criptografada. Remova ?sslmode=disable da DATABASE_URL (o app ativa SSL automaticamente para hosts remotos).";
     } else if (/password|authentication|role .* does not exist/i.test(mensagem)) {
       resultado.dica = "Usuário ou senha incorretos. Copie a connection string atualizada em Supabase → Project Settings → Database.";
+    } else if (/relation .* does not exist/i.test(mensagem)) {
+      resultado.dica =
+        "Conexão OK, mas a estrutura do SICED não existe neste banco. Rode `npx drizzle-kit push --config drizzle.prod.config.ts` apontando DATABASE_URL para este banco, ou cole supabase/schema.sql no SQL Editor.";
     } else if (/does not exist/i.test(mensagem)) {
       resultado.dica = "Banco inexistente ou sem permissão. Confira o nome do banco no final da URL.";
     }

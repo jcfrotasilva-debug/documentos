@@ -164,3 +164,51 @@ curl -s https://SEU-DOMINIO/api/health | python -m json.tool   # espera {"ok": t
 
 - `ok: true` → banco conectado, 7 tabelas criadas, base oficial configurada.
 - `ok: false` → leia `banco.erro` e `banco.dica`; a correção está em uma das quatro causas acima.
+
+---
+
+## Caso real resolvido: banco novo do Supabase (Vercel)
+
+Sintoma: deploy na Vercel com a connection string do Supabase configurada, mas a página não carregava.
+
+Diagnóstico: a conexão com o banco **funcionava**, porém o banco estava **vazio (0 tabelas)** — o app conectava e
+falhava em `relation "configuracoes" does not exist`. Causa: banco criado no Supabase sem aplicar a migração.
+
+Correção aplicada (uma única vez, por banco):
+
+```bash
+# opção 1 — via Drizzle
+DATABASE_URL="postgresql://postgres.<ref>:<SENHA>@aws-0-<região>.pooler.supabase.com:5432/postgres" \
+  npx drizzle-kit push --config drizzle.prod.config.ts
+
+# opção 2 — via SQL Editor do Supabase: cole supabase/schema.sql e clique em Run
+```
+
+Verificação depois de aplicar:
+
+```bash
+psql "postgresql://postgres.<ref>:<SENHA>@aws-0-<região>.pooler.supabase.com:5432/postgres" \
+  -c "select table_name from information_schema.tables where table_schema='public' order by 1"
+```
+
+Esperado: `configuracoes`, `documento_itens`, `documento_movimentos`, `documentos`, `numeracao`, `setores`,
+`sincronizacoes` (7 tabelas).
+
+### Qual conexão usar
+
+| Uso | Host / porta | Parâmetro |
+|---|---|---|
+| **Vercel/serverless (recomendado)** | `aws-0-<região>.pooler.supabase.com:6543` | `?pgbouncer=true` |
+| Vercel (também funciona) | `aws-0-<região>.pooler.supabase.com:5432` | — (pooler de sessão) |
+| Local (máquina do desenvolvedor) | `db.<ref>.supabase.co:5432` | — |
+| Migração/psql (scripts) | pooler 5432 ou conexão direta | — |
+
+Ambas as portas do pooler foram validadas com o app real. O modo **transação (6543)** é preferível em serverless
+por consumir menos conexões; o modo sessão (5432) tem limite menor e pode gerar
+`Max client connections reached` sob carga.
+
+### Numeração começa em 00001 no banco novo
+
+Banco novo não conhece os contadores oficiais, então a primeira emissão é `OF-00001/2026`. Para continuar a
+sequência real, abra **Base oficial (Supabase) → Importar**: a sincronização traz os documentos e ajusta os
+contadores (`EXPEDIÇÃO_OFÍCIO_2026 → 79`, etc.), passando o próximo número para `OF-00080/2026`.

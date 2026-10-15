@@ -65,9 +65,10 @@ export default function ErroAplicacao({
               <code>?sslmode=disable</code> da URL.
             </li>
             <li>
-              <strong>Tabelas não criadas no banco de produção.</strong> Rode{" "}
-              <code>npx drizzle-kit push</code> com a <code>DATABASE_URL</code> de produção ou execute{" "}
-              <code>supabase/schema.sql</code> no SQL Editor.
+              <strong>Tabelas não criadas no banco de produção — a causa mais comum em banco novo.</strong> O app
+              conecta, mas não encontra as tabelas (<code>relation &quot;configuracoes&quot; does not exist</code>). Rode{" "}
+              <code>npx drizzle-kit push --config drizzle.prod.config.ts</code> com a <code>DATABASE_URL</code> de
+              produção, ou cole <code>supabase/schema.sql</code> no SQL Editor do Supabase.
             </li>
             <li>
               <strong>Arquivo <code>.env</code> enviado no deploy.</strong> O Next.js lê o <code>.env</code> também em
