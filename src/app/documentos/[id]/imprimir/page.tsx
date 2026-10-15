@@ -5,6 +5,7 @@ import { botaoClasses } from "@/components/ui";
 import { CONFIG_MEIO, CONFIG_SIGILO, CONFIG_TIPO } from "@/lib/domain";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { buscarConfiguracao, buscarDocumento } from "@/lib/services/documentos";
+import { buscarResponsavelPorNome } from "@/lib/services/responsaveis";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +24,13 @@ export default async function ImprimirDocumentoPage({ params }: Props) {
   const numeroId = Number(id);
   if (!Number.isInteger(numeroId)) notFound();
 
-  const [registro, config] = await Promise.all([buscarDocumento(numeroId), buscarConfiguracao()]);
+  const registro = await buscarDocumento(numeroId);
   if (!registro) notFound();
+
+  const [config, responsavelRegistro] = await Promise.all([
+    buscarConfiguracao(),
+    buscarResponsavelPorNome(registro.documento.responsavel),
+  ]);
 
   const { documento, itens } = registro;
   const tipo = CONFIG_TIPO[documento.tipo];
@@ -185,7 +191,16 @@ export default async function ImprimirDocumentoPage({ params }: Props) {
         <div className="mx-auto mt-12 w-80 text-center">
           <div className="border-t border-slate-800 pt-2">
             <p className="text-[13px] font-semibold text-slate-900">{documento.responsavel}</p>
-            <p className="text-[12px] text-slate-600">{documento.cargoResponsavel ?? config?.cargoPadrao ?? ""}</p>
+            <p className="text-[12px] text-slate-600">
+              {documento.cargoResponsavel ?? responsavelRegistro?.cargo ?? config?.cargoPadrao ?? ""}
+            </p>
+            {(responsavelRegistro?.matricula || responsavelRegistro?.lotacao) && (
+              <p className="mt-0.5 text-[11px] text-slate-600">
+                {[responsavelRegistro?.matricula ? `RF/Matrícula: ${responsavelRegistro.matricula}` : null, responsavelRegistro?.lotacao]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
           </div>
         </div>
 

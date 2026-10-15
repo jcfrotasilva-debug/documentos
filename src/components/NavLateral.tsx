@@ -10,6 +10,7 @@ const ITENS = [
   { href: "/documentos", rotulo: "Documentos expedidos e recebidos", icone: "▤" },
   { href: "/documentos/novo", rotulo: "Novo expediente", icone: "＋" },
   { href: "/relatorios", rotulo: "Relatórios", icone: "▧" },
+  { href: "/responsaveis", rotulo: "Responsáveis por emissão", icone: "✒" },
   { href: "/setores", rotulo: "Unidades / setores", icone: "◫" },
   { href: "/configuracoes", rotulo: "Numeração e órgão", icone: "⚙" },
   { href: "/supabase", rotulo: "Base oficial (Supabase)", icone: "☁" },

@@ -77,6 +77,29 @@ export const setores = pgTable(
 );
 
 /* ------------------------------------------------------------------ */
+/* Responsáveis pela emissão de documentos                            */
+/* ------------------------------------------------------------------ */
+
+export const responsaveis = pgTable(
+  "responsaveis",
+  {
+    id: serial("id").primaryKey(),
+    nome: varchar("nome", { length: 140 }).notNull(),
+    cargo: varchar("cargo", { length: 140 }),
+    matricula: varchar("matricula", { length: 40 }),
+    documentoIdentidade: varchar("documento_identidade", { length: 40 }),
+    email: varchar("email", { length: 160 }),
+    telefone: varchar("telefone", { length: 40 }),
+    lotacao: varchar("lotacao", { length: 160 }),
+    observacoes: text("observacoes"),
+    ativo: boolean("ativo").notNull().default(true),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+    atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("responsaveis_nome_idx").on(table.nome)],
+);
+
+/* ------------------------------------------------------------------ */
 /* Documentos (expedição e recebimento)                               */
 /* ------------------------------------------------------------------ */
 
@@ -235,6 +258,7 @@ export type DocumentoInsert = typeof documentos.$inferInsert;
 export type DocumentoItem = typeof documentoItens.$inferSelect;
 export type DocumentoMovimento = typeof documentoMovimentos.$inferSelect;
 export type Setor = typeof setores.$inferSelect;
+export type Responsavel = typeof responsaveis.$inferSelect;
 export type Numeracao = typeof numeracao.$inferSelect;
 export type Configuracao = typeof configuracoes.$inferSelect;
 export type Sincronizacao = typeof sincronizacoes.$inferSelect;

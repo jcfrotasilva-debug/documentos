@@ -103,6 +103,21 @@ export const setorInputSchema = z.object({
   ativo: z.coerce.boolean().default(true),
 });
 
+export const responsavelInputSchema = z.object({
+  nome: textoObrigatorio("Nome", 140),
+  cargo: textoOpcional(140),
+  matricula: textoOpcional(40),
+  documentoIdentidade: textoOpcional(40),
+  email: textoOpcional(160),
+  telefone: textoOpcional(40),
+  lotacao: textoOpcional(160),
+  observacoes: z
+    .union([z.string().max(2000), z.null()])
+    .optional()
+    .transform((valor) => valor || null),
+  ativo: z.coerce.boolean().default(true),
+});
+
 export const numeracaoInputSchema = z.object({
   movimentacao: z.enum([...MOVIMENTACOES] as [string, ...string[]]).default("EXPEDICAO"),
   tipo: z.enum([...TIPOS_DOCUMENTO] as [string, ...string[]]),

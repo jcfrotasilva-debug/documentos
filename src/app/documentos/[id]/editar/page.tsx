@@ -5,6 +5,7 @@ import { botaoClasses } from "@/components/ui";
 import { hojeISO } from "@/lib/format";
 import type { DocumentoFormValores, ItemForm } from "@/lib/documento-form";
 import { anosDisponiveis, buscarDocumento } from "@/lib/services/documentos";
+import { listarResponsaveisAtivos } from "@/lib/services/responsaveis";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function EditarDocumentoPage({ params }: Props) {
   const registro = await buscarDocumento(numeroId);
   if (!registro) notFound();
 
-  const anos = await anosDisponiveis();
+  const [anos, responsaveis] = await Promise.all([anosDisponiveis(), listarResponsaveisAtivos()]);
   const { documento, itens } = registro;
 
   const itensForm: ItemForm[] = itens.map((item) => ({
@@ -85,6 +86,7 @@ export default async function EditarDocumentoPage({ params }: Props) {
         valores={valores}
         anos={anos}
         anoAtual={Number(hojeISO().slice(0, 4))}
+        responsaveis={responsaveis}
       />
     </div>
   );

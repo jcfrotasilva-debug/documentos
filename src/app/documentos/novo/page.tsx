@@ -5,20 +5,26 @@ import { valoresIniciais } from "@/lib/documento-form";
 import { CONFIG_MOVIMENTACAO } from "@/lib/domain";
 import { hojeISO } from "@/lib/format";
 import { anosDisponiveis, buscarConfiguracao, espiarProximosNumeros } from "@/lib/services/documentos";
+import { listarResponsaveisAtivos } from "@/lib/services/responsaveis";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovoDocumentoPage() {
   const anoAtual = Number(hojeISO().slice(0, 4));
-  const [config, anos, previsoes] = await Promise.all([
+  const [config, anos, previsoes, responsaveis] = await Promise.all([
     buscarConfiguracao(),
     anosDisponiveis(),
     espiarProximosNumeros(anoAtual),
+    listarResponsaveisAtivos(),
   ]);
 
+  /* Prefere o responsável padrão se ele estiver cadastrado. */
+  const padrao = config?.responsavelPadrao?.trim() ?? "";
+  const padraoRegistrado = responsaveis.find((item) => item.nome === padrao);
+
   const valores = valoresIniciais({
-    responsavelPadrao: config?.responsavelPadrao ?? "",
-    cargoPadrao: config?.cargoPadrao ?? "",
+    responsavelPadrao: padraoRegistrado?.nome ?? padrao,
+    cargoPadrao: padraoRegistrado?.cargo ?? config?.cargoPadrao ?? "",
   });
 
   return (
@@ -64,7 +70,13 @@ export default async function NovoDocumentoPage() {
         </div>
       </div>
 
-      <DocumentoForm modo="novo" valores={valores} anos={anos} anoAtual={anoAtual} />
+      <DocumentoForm
+        modo="novo"
+        valores={valores}
+        anos={anos}
+        anoAtual={anoAtual}
+        responsaveis={responsaveis}
+      />
     </div>
   );
 }

@@ -8,6 +8,13 @@
       "when": 1792071007336,
       "tag": "0000_regular_james_howlett",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792082926973,
+      "tag": "0001_chubby_captain_britain",
+      "breakpoints": true
     }
   ]
 }

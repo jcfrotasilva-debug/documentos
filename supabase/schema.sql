@@ -1,9 +1,9 @@
 -- =============================================================================
--- SICED — Controle de Expedientes · estrutura do banco de dados (PostgreSQL)
+-- SICED — Controle de Expedientes · estrutura completa do banco (PostgreSQL)
 --
 -- Como usar: Supabase → SQL Editor → New query → cole tudo → Run.
--- Alternativa automatizada: npx drizzle-kit push (com a DATABASE_URL de produção).
--- O script é idempotente: pode ser executado mais de uma vez sem erro.
+-- Alternativa: npx drizzle-kit push --config drizzle.prod.config.ts
+-- Idempotente: pode ser executado quantas vezes precisar.
 -- =============================================================================
 
 DO $$ BEGIN
@@ -150,3 +150,19 @@ CREATE INDEX IF NOT EXISTS "documentos_mov_tipo_ano_seq_idx" ON "documentos" USI
 CREATE UNIQUE INDEX IF NOT EXISTS "documentos_origem_externa_idx" ON "documentos" USING btree ("origem_externa_id");
 CREATE UNIQUE INDEX IF NOT EXISTS "numeracao_mov_tipo_ano_idx" ON "numeracao" USING btree ("movimentacao","tipo","ano");
 CREATE UNIQUE INDEX IF NOT EXISTS "setores_sigla_idx" ON "setores" USING btree ("sigla");
+CREATE TABLE IF NOT EXISTS "responsaveis" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"nome" varchar(140) NOT NULL,
+	"cargo" varchar(140),
+	"matricula" varchar(40),
+	"documento_identidade" varchar(40),
+	"email" varchar(160),
+	"telefone" varchar(40),
+	"lotacao" varchar(160),
+	"observacoes" text,
+	"ativo" boolean DEFAULT true NOT NULL,
+	"criado_em" timestamp with time zone DEFAULT now() NOT NULL,
+	"atualizado_em" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "responsaveis_nome_idx" ON "responsaveis" USING btree ("nome");

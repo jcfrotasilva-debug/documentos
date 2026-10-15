@@ -266,3 +266,65 @@ curl -X POST https://SEU-DOMINIO/api/numeracao/ajustar \
 | Recebimento · Protocolo | 27 | `R-PRT-00028/2026` |
 
 Ajuste qualquer valor pela tela *Numeração e órgão* conforme a realidade da unidade escolar.
+
+---
+
+## Responsáveis pela emissão de documentos
+
+Cadastro de quem assina e responde pelos expedientes — evita digitação livre e inconsistentes no campo responsável.
+
+### Onde fica
+
+Menu **Responsáveis por emissão** (`/responsaveis`):
+
+| Campo | Uso |
+|---|---|
+| Nome completo | obrigatório; é a chave de vínculo com os documentos |
+| Cargo / função | impresso sob a assinatura |
+| Matrícula / RF | impressa junto à assinatura |
+| RG / documento | identificação complementar |
+| E-mail e telefone | contato institucional |
+| Lotação / setor | setor de exercício (aparece na assinatura) |
+| Ativo | somente ativos aparecem na seleção de novas emissões |
+
+A listagem mostra **quantas emissões** cada pessoa assinou e a **data da última assinatura**. Botões:
+**Importar do acervo** (cria registros a partir dos nomes já usados em documentos, ignorando marcadores
+técnicos da sincronização) e **⭳ CSV** (relatório de responsáveis).
+
+### Integração com o cadastro de documentos
+
+No formulário de expediente o campo **Responsável pelo registro** é uma lista dos responsáveis ativos; ao escolher
+um nome, o **cargo é preenchido automaticamente**. A opção *“Outro (digitar manualmente)”* mantém o modo texto livre
+para casos eventuais.
+
+Na **impressão**, o bloco de assinatura passa a exibir nome, cargo, matrícula/RF e lotação do responsável
+selecionado.
+
+### Consistência automática do acervo
+
+Ao alterar o **nome** ou o **cargo** de um responsável, o sistema atualiza também todos os documentos assinados por
+ele (a resposta da API informa quantos registros foram sincronizados). Assim o acervo não fica com grafias
+divergentes.
+
+### Regras de proteção
+
+- Excluir um responsável que já assinou documentos é **bloqueado (409)** com a orientação de **inativá-lo** — sai das
+  novas emissões sem perder o histórico.
+- Nome duplicado é **bloqueado (409)**.
+- `DELETE /api/responsaveis?id=` (sem histórico) e `DELETE /api/responsaveis/{id}` fazem a validação.
+
+### API
+
+```bash
+GET    /api/responsaveis                 # lista com contagem de emissões
+POST   /api/responsaveis                 # cadastra
+POST   /api/responsaveis {"acao":"importar-do-acervo"}
+PUT    /api/responsaveis                 # atualiza ({"sincronizar":false} evita propagar ao acervo)
+DELETE /api/responsaveis/{id}
+GET    /api/exportar/responsaveis        # CSV
+```
+
+### Estrutura no banco
+
+A tabela `responsaveis` foi adicionada (total de **8 tabelas**). Para atualizar bancos existentes, rode
+`npx drizzle-kit push --config drizzle.prod.config.ts` ou reexecute `supabase/schema.sql`, que é idempotente.

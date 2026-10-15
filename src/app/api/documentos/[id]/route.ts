@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { atualizarDocumento, buscarDocumento, excluirDocumento } from "@/lib/services/documentos";
+import { ehViolacaoUnicidade, textoDoErro } from "@/lib/erros";
 import { documentoInputSchema, primeiraMensagemErro } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -37,11 +38,10 @@ export async function PUT(request: NextRequest, { params }: Contexto) {
     if (!atualizado) return Response.json({ erro: "Documento não encontrado" }, { status: 404 });
     return Response.json({ ok: true, documento: atualizado });
   } catch (erro) {
-    const mensagem = erro instanceof Error ? erro.message : "Falha ao atualizar documento";
-    if (mensagem.includes("documentos_numero_idx")) {
+    if (ehViolacaoUnicidade(erro, ["documentos_numero_idx", "documentos"])) {
       return Response.json({ erro: "Já existe um documento com este número." }, { status: 409 });
     }
-    return Response.json({ erro: mensagem }, { status: 500 });
+    return Response.json({ erro: textoDoErro(erro) }, { status: 500 });
   }
 }
 

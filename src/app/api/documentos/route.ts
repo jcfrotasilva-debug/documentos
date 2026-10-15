@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { parseFiltros } from "@/lib/filters";
 import { criarDocumento, listarDocumentos } from "@/lib/services/documentos";
+import { ehViolacaoUnicidade, textoDoErro } from "@/lib/erros";
 import { documentoInputSchema, primeiraMensagemErro } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -29,10 +30,9 @@ export async function POST(request: NextRequest) {
     const criado = await criarDocumento(analise.data, analise.data.criadoPor || "Usuário do sistema");
     return Response.json({ ok: true, ...criado }, { status: 201 });
   } catch (erro) {
-    const mensagem = erro instanceof Error ? erro.message : "Falha ao cadastrar documento";
-    if (mensagem.includes("documentos_numero_idx")) {
+    if (ehViolacaoUnicidade(erro, ["documentos_numero_idx", "documentos"])) {
       return Response.json({ erro: "Já existe um documento com este número." }, { status: 409 });
     }
-    return Response.json({ erro: mensagem }, { status: 500 });
+    return Response.json({ erro: textoDoErro(erro) }, { status: 500 });
   }
 }

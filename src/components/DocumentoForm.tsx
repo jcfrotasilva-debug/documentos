@@ -36,16 +36,20 @@ type Previsao = {
   sequencial: number;
 };
 
+export type ResponsavelOpcao = { id: number; nome: string; cargo: string | null };
+
 export function DocumentoForm({
   modo,
   valores,
   anos,
   anoAtual,
+  responsaveis = [],
 }: {
   modo: "novo" | "editar";
   valores: DocumentoFormValores;
   anos: number[];
   anoAtual: number;
+  responsaveis?: ResponsavelOpcao[];
 }) {
   const router = useRouter();
   const [form, setForm] = useState<DocumentoFormValores>(valores);
@@ -59,6 +63,10 @@ export function DocumentoForm({
   const [proximoDesejado, setProximoDesejado] = useState("");
   const [ajustando, setAjustando] = useState(false);
   const [avisoSequencia, setAvisoSequencia] = useState<string | null>(null);
+  /* Responsável fora do cadastro (digitação livre). */
+  const [responsavelLivre, setResponsavelLivre] = useState(
+    !valores.responsavel || !responsaveis.some((item) => item.nome === valores.responsavel),
+  );
 
   const ano = Number(form.dataDocumento.slice(0, 4)) || anoAtual;
 
@@ -435,15 +443,61 @@ export function DocumentoForm({
         </div>
       </Card>
 
+      {responsaveis.length === 0 && (
+        <p className="no-print rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Nenhum responsável cadastrado.{" "}
+          <a href="/responsaveis" className="font-semibold underline">
+            Cadastre os responsáveis pela emissão
+          </a>{" "}
+          para selecioná-los aqui e imprimir cargo, matrícula e lotação na assinatura.
+        </p>
+      )}
+
       <Card titulo="Tramitação, classificação e envio">
         <div className="grid gap-4 md:grid-cols-3">
-          <Campo label="Responsável pelo registro" obrigatorio>
-            <input
-              className={inputClasses}
-              value={form.responsavel}
-              onChange={(evento) => atualizar("responsavel", evento.target.value)}
-              required
-            />
+          <Campo
+            label="Responsável pelo registro"
+            obrigatorio
+            dica="Selecione um responsável cadastrado — cargo, matrícula e lotação entram na assinatura impressa."
+          >
+            <div className="space-y-2">
+              <select
+                className={selectClasses}
+                value={responsavelLivre ? "__outro__" : form.responsavel}
+                onChange={(evento) => {
+                  const valor = evento.target.value;
+                  if (valor === "__outro__") {
+                    setResponsavelLivre(true);
+                    return;
+                  }
+                  const escolhido = responsaveis.find((item) => item.nome === valor);
+                  setResponsavelLivre(false);
+                  setForm((atual) => ({
+                    ...atual,
+                    responsavel: valor,
+                    cargoResponsavel: escolhido?.cargo ?? atual.cargoResponsavel,
+                  }));
+                }}
+              >
+                <option value="">— selecione o responsável —</option>
+                {responsaveis.map((item) => (
+                  <option key={item.id} value={item.nome}>
+                    {item.nome}
+                    {item.cargo ? ` — ${item.cargo}` : ""}
+                  </option>
+                ))}
+                <option value="__outro__">Outro (digitar manualmente)</option>
+              </select>
+              {responsavelLivre && (
+                <input
+                  className={inputClasses}
+                  value={form.responsavel}
+                  onChange={(evento) => atualizar("responsavel", evento.target.value)}
+                  placeholder="Nome de quem responde pela emissão"
+                  required
+                />
+              )}
+            </div>
           </Campo>
           <Campo label="Cargo do responsável">
             <input

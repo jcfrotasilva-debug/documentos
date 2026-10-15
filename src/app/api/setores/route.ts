@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { db } from "@/db";
 import { setores } from "@/db/schema";
+import { ehViolacaoUnicidade, textoDoErro } from "@/lib/erros";
 import { primeiraMensagemErro, setorInputSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -26,11 +27,10 @@ export async function POST(request: NextRequest) {
     const [criado] = await db.insert(setores).values(analise.data).returning();
     return Response.json({ ok: true, setor: criado }, { status: 201 });
   } catch (erro) {
-    const mensagem = erro instanceof Error ? erro.message : "Falha ao salvar unidade";
-    if (mensagem.includes("setores_sigla_idx")) {
+    if (ehViolacaoUnicidade(erro, ["setores_sigla_idx", "setores"])) {
       return Response.json({ erro: "Já existe uma unidade com essa sigla." }, { status: 409 });
     }
-    return Response.json({ erro: mensagem }, { status: 500 });
+    return Response.json({ erro: textoDoErro(erro) }, { status: 500 });
   }
 }
 
