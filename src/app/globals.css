@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dae6ff;
+  --color-brand-500: #3b6fe0;
+  --color-brand-600: #2b57bd;
+  --color-brand-700: #234a9e;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #dbeafe;
+}
+
+/* Tabelas densas com cabeçalho fixo */
+.tabela-docs thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #f8fafc;
+  backdrop-filter: blur(4px);
+}
+
+.scroll-fino::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-fino::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* Impressão de documentos oficiais */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .no-print,
+  aside,
+  header.app-header {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+  .app-main {
+    padding: 0 !important;
+  }
+  @page {
+    margin: 18mm 16mm;
+  }
+}
