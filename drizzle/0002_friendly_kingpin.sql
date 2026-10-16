@@ -1,0 +1,2 @@
+ALTER TABLE "configuracoes" ADD COLUMN "orgao_hierarquia" varchar(400) DEFAULT 'GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO' NOT NULL;--> statement-breakpoint
+ALTER TABLE "configuracoes" ADD COLUMN "logo_url" varchar(300) DEFAULT '' NOT NULL;

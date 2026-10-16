@@ -24,6 +24,8 @@ export async function PUT(request: NextRequest) {
     orgaoNome: analise.data.orgaoNome,
     orgaoUnidade: analise.data.orgaoUnidade,
     orgaoSigla: analise.data.orgaoSigla,
+    orgaoHierarquia: analise.data.orgaoHierarquia ?? "",
+    logoUrl: analise.data.logoUrl ?? "",
     endereco: analise.data.endereco ?? "",
     cidade: analise.data.cidade ?? "",
     uf: analise.data.uf ?? "",

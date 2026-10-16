@@ -328,3 +328,51 @@ GET    /api/exportar/responsaveis        # CSV
 
 A tabela `responsaveis` foi adicionada (total de **8 tabelas**). Para atualizar bancos existentes, rode
 `npx drizzle-kit push --config drizzle.prod.config.ts` ou reexecute `supabase/schema.sql`, que é idempotente.
+
+---
+
+## Documento oficial: Relação de Remessa (duas vias em uma folha)
+
+Ao imprimir um documento do tipo **Relação de Remessa**, o sistema não usa o padrão ofício: gera o formulário
+oficial **em duas vias na mesma folha**, separadas por uma linha pontilhada de corte.
+
+### Estrutura de cada via
+
+1. **Timbre** — brasão (ou monograma) + hierarquia institucional + nome da escola + endereço e telefone.
+2. **Título** `RELAÇÃO DE REMESSA` centralizado e, à direita, o número no padrão do documento oficial
+   (ex.: `041/2026` — sequencial com três dígitos + exercício).
+3. **Campos**: `Remetente:` (nome da escola), `Destinatário:` (campo Interessado do cadastro) e
+   `Endereço destinatário:` (linha em branco para preenchimento manual).
+4. **Tabela** com as colunas do modelo: `Nº item`, `Documento`, `Quantidade (volumes)` e
+   `Situação (marque um X)` com as quatro opções — Recebido · Recebido com Ressalva · Recusado · Devolvido.
+   Cada item cadastrado ocupa uma linha; o sistema acrescenta linhas em branco (mínimo 6) para preenchimento manual.
+5. **Rodapé do formulário**: `Data:` preenchida com a data do documento e `Recebi em ___/___/___`.
+6. **Assinaturas**: `Expedido por:` (nome e cargo do responsável pelo registro, com a linha para assinar) e
+   `Recebido por: Nome, Cargo, Assinatura e Unidade`.
+
+Cada via é identificada no alto: **1ª via — expedidor** (fica na escola) e **2ª via — recebedor** (volta assinada).
+
+### Configurar o timbre
+
+Em *Numeração e órgão → Dados institucionais*:
+
+| Campo | Exemplo preenchido |
+|---|---|
+| Órgão | `E.E. PROFA. MARLENE FRATTINI` |
+| Sigla | `EEPMF` |
+| Unidade emissora | (opcional; pode ficar em branco) |
+| **Hierarquia do timbre** | `GOVERNO DO ESTADO DE SÃO PAULO\|SECRETARIA DE ESTADO DA EDUCAÇÃO` |
+| Endereço / Cidade / UF / CEP / Telefone | `Av. Aldo Nicolucci, 560 - Jardim São José` · `Matão` · `SP` · `15.996-036` · `3382-6604` |
+| **Brasão / logotipo** | `/brasao.png` (arquivo na pasta `public`) ou uma URL completa |
+
+A linha de endereço do timbre é montada automaticamente:
+`Av. Aldo Nicolucci, 560 - Jardim São José - Matão - SP CEP 15.996-036 - Tel. 3382-6604`.
+
+Sem valor em **Brasão**, é impresso um monograma circular com a sigla — para usar o brasão oficial, coloque o arquivo
+`brasao.png` na pasta `public/` do projeto e informe `/brasao.png` no campo.
+
+### Impressão
+
+Recomendado papel **A4 retrato**, margens normais, sem cabeçalho/rodapé do navegador.
+O menu do sistema é ocultado automaticamente na impressão. Os demais tipos de documento (Ofício, Ofício APM,
+Protocolo, Processo, Informação) continuam no padrão de ofício com timbre institucional.

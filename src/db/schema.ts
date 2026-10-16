@@ -241,6 +241,13 @@ export const configuracoes = pgTable("configuracoes", {
     .notNull()
     .default("Serviço de Expediente e Protocolo Escolar"),
   orgaoSigla: varchar("orgao_sigla", { length: 20 }).notNull().default("EEPMF"),
+  /* Linhas de hierarquia do timbre, separadas por "|". Ex.:
+     GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO */
+  orgaoHierarquia: varchar("orgao_hierarquia", { length: 400 })
+    .notNull()
+    .default("GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO"),
+  /* Brasão oficial: URL ou caminho em /public (ex.: /brasao.png). Vazio = monograma. */
+  logoUrl: varchar("logo_url", { length: 300 }).notNull().default(""),
   endereco: varchar("endereco", { length: 200 }).notNull().default(""),
   cidade: varchar("cidade", { length: 120 }).notNull().default(""),
   uf: varchar("uf", { length: 2 }).notNull().default(""),

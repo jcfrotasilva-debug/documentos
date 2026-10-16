@@ -43,6 +43,8 @@ export default async function ConfiguracoesPage() {
           orgaoNome: config?.orgaoNome ?? "",
           orgaoUnidade: config?.orgaoUnidade ?? "",
           orgaoSigla: config?.orgaoSigla ?? "",
+          orgaoHierarquia: config?.orgaoHierarquia ?? "",
+          logoUrl: config?.logoUrl ?? "",
           endereco: config?.endereco ?? "",
           cidade: config?.cidade ?? "",
           uf: config?.uf ?? "",

@@ -41,6 +41,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     sigla = config?.orgaoSigla?.trim() || sigla;
     const rotulo = [config?.orgaoNome, config?.orgaoUnidade].map((valor) => valor?.trim()).filter(Boolean);
     if (rotulo.length > 0) orgao = rotulo.join(" · ");
+    if (!config?.orgaoSigla?.trim() && config?.orgaoNome) sigla = config.orgaoNome.slice(0, 4);
   } catch {
     /* banco recém-validado: layout segue com os padrões */
   }

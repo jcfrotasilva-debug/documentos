@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotaoImprimir } from "@/components/BotaoImprimir";
+import { RelacaoRemessaDoc } from "@/components/impressao/RelacaoRemessaDoc";
 import { botaoClasses } from "@/components/ui";
 import { CONFIG_MEIO, CONFIG_SIGILO, CONFIG_TIPO } from "@/lib/domain";
-import { formatarData, formatarMoeda } from "@/lib/format";
+import { formatarData, formatarMoeda, linhaEndereco } from "@/lib/format";
 import { buscarConfiguracao, buscarDocumento } from "@/lib/services/documentos";
 import { buscarResponsavelPorNome } from "@/lib/services/responsaveis";
 
@@ -34,6 +35,7 @@ export default async function ImprimirDocumentoPage({ params }: Props) {
 
   const { documento, itens } = registro;
   const tipo = CONFIG_TIPO[documento.tipo];
+  const ehRelacaoRemessa = documento.tipo === "RELACAO_REMESSA";
   const totalItens = itens.reduce((soma, item) => soma + item.quantidade, 0);
   const valorItens = itens.reduce((soma, item) => soma + (item.valor ? Number(item.valor) : 0), 0);
   const cidade = config?.cidade ?? "";
@@ -46,7 +48,9 @@ export default async function ImprimirDocumentoPage({ params }: Props) {
             Pré-visualização de impressão — {documento.numero}
           </h1>
           <p className="text-xs text-slate-500">
-            Documento formatado no padrão ofício. Use &ldquo;Imprimir&rdquo; para gerar o PDF.
+            {ehRelacaoRemessa
+              ? "Relação de Remessa em duas vias na mesma folha (1ª via expedidor · 2ª via recebedor). Use “Imprimir” para gerar o PDF."
+              : "Documento formatado no padrão ofício. Use “Imprimir” para gerar o PDF."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -57,25 +61,47 @@ export default async function ImprimirDocumentoPage({ params }: Props) {
         </div>
       </div>
 
+      {ehRelacaoRemessa && <RelacaoRemessaDoc documento={documento} itens={itens} config={config ?? undefined} />}
+
+      {!ehRelacaoRemessa && (
       <article className="print-area mx-auto max-w-[880px] rounded-xl border border-slate-200 bg-white px-10 py-10 shadow-sm print:max-w-none">
         <header className="flex items-start gap-5 border-b-2 border-slate-800 pb-4">
           <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-slate-800 text-center text-[11px] font-bold uppercase leading-tight text-slate-800">
             {(config?.orgaoSigla ?? "ÓRGÃO").slice(0, 10)}
           </span>
           <div className="flex-1 text-center">
+            {(config?.orgaoHierarquia ?? "")
+              .split("|")
+              .map((linha) => linha.trim())
+              .filter(Boolean)
+              .map((linha, indice) => (
+                <p
+                  key={linha}
+                  className={
+                    indice === 0
+                      ? "text-[13px] font-bold uppercase tracking-wide text-slate-900"
+                      : "text-[12px] font-semibold uppercase tracking-wide text-slate-800"
+                  }
+                >
+                  {linha}
+                </p>
+              ))}
             <p className="text-sm font-bold uppercase tracking-wide text-slate-900">
               {config?.orgaoNome || "Unidade escolar"}
             </p>
             {config?.orgaoUnidade && (
-              <p className="text-[13px] font-semibold uppercase tracking-wide text-slate-700">{config.orgaoUnidade}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">{config.orgaoUnidade}</p>
             )}
             <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
-              {[config?.endereco, [config?.cidade, config?.uf].filter(Boolean).join("/")]
-                .filter(Boolean)
-                .join(" — ")}
-              {config?.cep ? ` · CEP ${config.cep}` : ""}
+              {linhaEndereco(
+                config?.endereco ?? "",
+                config?.cidade ?? "",
+                config?.uf ?? "",
+                config?.cep ?? "",
+                config?.telefone ?? "",
+              )}
               <br />
-              {[config?.telefone, config?.email, config?.site].filter(Boolean).join(" · ")}
+              {[config?.email, config?.site].filter(Boolean).join(" · ")}
             </p>
           </div>
         </header>
@@ -220,6 +246,7 @@ export default async function ImprimirDocumentoPage({ params }: Props) {
           </span>
         </footer>
       </article>
+      )}
     </div>
   );
 }

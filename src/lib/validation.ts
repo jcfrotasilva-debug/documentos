@@ -146,6 +146,8 @@ export const configuracaoInputSchema = z.object({
   orgaoNome: textoObrigatorio("Órgão", 200),
   orgaoUnidade: textoObrigatorio("Unidade", 200),
   orgaoSigla: textoObrigatorio("Sigla do órgão", 20),
+  orgaoHierarquia: z.string().trim().max(300).optional().default(""),
+  logoUrl: z.string().trim().max(300).optional().default(""),
   endereco: z.string().trim().max(200).optional().default(""),
   cidade: z.string().trim().max(120).optional().default(""),
   uf: z.string().trim().max(2).optional().default(""),

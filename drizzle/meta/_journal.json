@@ -15,6 +15,13 @@
       "when": 1792082926973,
       "tag": "0001_chubby_captain_britain",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792157862833,
+      "tag": "0002_friendly_kingpin",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,8 @@ export type ConfiguracaoValores = {
   orgaoNome: string;
   orgaoUnidade: string;
   orgaoSigla: string;
+  orgaoHierarquia: string;
+  logoUrl: string;
   endereco: string;
   cidade: string;
   uf: string;
@@ -352,8 +354,32 @@ export function ConfiguracoesPainel({
             <Campo label="Sigla" obrigatorio dica="Usada no timbre da impressão.">
               <input className={inputClasses} value={form.orgaoSigla} onChange={(e) => atualizarForm("orgaoSigla", e.target.value)} required />
             </Campo>
-            <Campo label="Unidade emissora" obrigatorio className="md:col-span-3">
-              <input className={inputClasses} value={form.orgaoUnidade} onChange={(e) => atualizarForm("orgaoUnidade", e.target.value)} required />
+            <Campo label="Unidade emissora" className="md:col-span-3" dica="Aparece abaixo do nome da escola. Pode ficar em branco.">
+              <input className={inputClasses} value={form.orgaoUnidade} onChange={(e) => atualizarForm("orgaoUnidade", e.target.value)} />
+            </Campo>
+            <Campo
+              label="Hierarquia do timbre"
+              className="md:col-span-3"
+              dica="Uma linha por nível, separadas por | . Ex.: GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO"
+            >
+              <input
+                className={inputClasses}
+                value={form.orgaoHierarquia}
+                onChange={(e) => atualizarForm("orgaoHierarquia", e.target.value)}
+                placeholder="GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO"
+              />
+            </Campo>
+            <Campo
+              label="Brasão / logotipo"
+              className="md:col-span-3"
+              dica="URL da imagem (ex.: https://.../brasao.png) ou caminho no projeto (ex.: /brasao.png dentro da pasta public). Vazio = monograma com a sigla."
+            >
+              <input
+                className={inputClasses}
+                value={form.logoUrl}
+                onChange={(e) => atualizarForm("logoUrl", e.target.value)}
+                placeholder="/brasao.png"
+              />
             </Campo>
             <Campo label="Endereço" className="md:col-span-2">
               <input className={inputClasses} value={form.endereco} onChange={(e) => atualizarForm("endereco", e.target.value)} />

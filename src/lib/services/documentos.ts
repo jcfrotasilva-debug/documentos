@@ -763,6 +763,8 @@ export async function salvarConfiguracao(dados: {
   orgaoNome: string;
   orgaoUnidade: string;
   orgaoSigla: string;
+  orgaoHierarquia?: string;
+  logoUrl?: string;
   endereco: string;
   cidade: string;
   uf: string;

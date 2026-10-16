@@ -303,6 +303,8 @@ const CONFIGURACAO_ESCOLAR = {
   orgaoNome: "EE PROFA. MARLENE FRATTINI",
   orgaoUnidade: "Serviço de Expediente e Protocolo Escolar",
   orgaoSigla: "EEPMF",
+  orgaoHierarquia: "GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO",
+  logoUrl: "",
   endereco: "Rua Projetada, 500 — Jardim das Acácias",
   cidade: "Campinas",
   uf: "SP",

@@ -55,6 +55,24 @@ export function textoPrazo(prazo: string | null | undefined): {
   return { texto: `Vence em ${diff}d`, tom: "ok" };
 }
 
+/** Monta a linha de endereço do timbre: "Av. X, 560 - Bairro - Cidade - UF CEP 00000-000 - Tel. 0000-0000". */
+export function linhaEndereco(endereco: string, cidade: string, uf: string, cep: string, telefone: string): string {
+  const partes: string[] = [];
+  if (endereco) partes.push(endereco);
+  const local = [cidade, uf].filter(Boolean).join(" - ");
+  if (local) partes.push(cep ? `${local} CEP ${cep}` : local);
+  else if (cep) partes.push(`CEP ${cep}`);
+  if (telefone) partes.push(`Tel. ${telefone}`);
+  return partes.join(" - ");
+}
+
+/** Número da Relação de Remessa no padrão do documento oficial (041/2026). */
+export function numeroRelacao(numeroLegado: string | null, sequencial: number, ano: number): string {
+  const bruto = (numeroLegado ?? "").match(/^(\d+)/)?.[1];
+  const seq = Number(bruto ?? sequencial) || sequencial;
+  return `${String(seq).padStart(3, "0")}/${ano}`;
+}
+
 export function csvCampo(valor: unknown): string {
   const texto = valor === null || valor === undefined ? "" : String(valor);
   return `"${texto.replace(/"/g, '""')}"`;
