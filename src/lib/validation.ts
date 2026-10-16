@@ -159,6 +159,20 @@ export const configuracaoInputSchema = z.object({
   cargoPadrao: z.string().trim().max(140).optional().default(""),
 });
 
+/** Upload do brasão: data URL (base64) de imagem, até ~1,5 MB. */
+export const brasaoUploadSchema = z.object({
+  arquivo: z
+    .string()
+    .trim()
+    .min(30, "Arquivo inválido")
+    .max(2_000_000, "Imagem muito grande (máximo aproximado de 1,4 MB)")
+    .refine(
+      (valor) => /^data:image\/(png|jpeg|jpg|svg\+xml|webp|gif);base64,[A-Za-z0-9+/=\s]+$/i.test(valor),
+      "Formato não suportado. Envie PNG, JPG, SVG ou WEBP.",
+    ),
+  nomeArquivo: z.string().trim().max(200).optional().default("brasao"),
+});
+
 export function primeiraMensagemErro(erro: z.ZodError): string {
   const issue = erro.issues[0];
   if (!issue) return "Dados inválidos";

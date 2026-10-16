@@ -786,6 +786,91 @@ export async function salvarConfiguracao(dados: {
   return salva;
 }
 
+/* ------------------------------------------------------------------ */
+/* Brasão / logotipo do timbre                                        */
+/* ------------------------------------------------------------------ */
+
+export type BrasaoInfo = {
+  temImagem: boolean;
+  nomeArquivo: string | null;
+  atualizadoEm: Date | null;
+  urlExterna: string;
+  /** Fonte efetiva usada na impressão. */
+  origem: "banco" | "arquivo-publico" | "url" | "monograma";
+  /** Endereço que o navegador deve carregar na imagem. */
+  src: string | null;
+  versao: string;
+};
+
+export async function salvarBrasao(dataUrl: string, nomeArquivo: string) {
+  const [registro] = await db
+    .update(configuracoes)
+    .set({
+      logoDados: dataUrl,
+      logoNomeArquivo: nomeArquivo,
+      logoAtualizadoEm: new Date(),
+      atualizadoEm: new Date(),
+    })
+    .where(eq(configuracoes.id, 1))
+    .returning();
+  return registro;
+}
+
+export async function removerBrasao() {
+  const [registro] = await db
+    .update(configuracoes)
+    .set({ logoDados: null, logoNomeArquivo: null, logoAtualizadoEm: new Date(), atualizadoEm: new Date() })
+    .where(eq(configuracoes.id, 1))
+    .returning();
+  return registro;
+}
+
+/** Decide qual imagem usar no timbre: banco → arquivo em /public → URL externa → monograma. */
+export function resolverBrasao(config: {
+  logoDados?: string | null;
+  logoUrl?: string | null;
+  logoAtualizadoEm?: Date | null;
+  logoNomeArquivo?: string | null;
+} | null): BrasaoInfo {
+  const versao = config?.logoAtualizadoEm ? new Date(config.logoAtualizadoEm).getTime().toString(36) : "0";
+  const urlExterna = config?.logoUrl?.trim() ?? "";
+
+  if (config?.logoDados) {
+    return {
+      temImagem: true,
+      nomeArquivo: config.logoNomeArquivo ?? null,
+      atualizadoEm: config.logoAtualizadoEm ?? null,
+      urlExterna,
+      origem: "banco",
+      src: `/api/brasao?v=${versao}`,
+      versao,
+    };
+  }
+
+  if (urlExterna) {
+    const ehArquivoPublico = urlExterna.startsWith("/");
+    return {
+      temImagem: true,
+      nomeArquivo: null,
+      atualizadoEm: config?.logoAtualizadoEm ?? null,
+      urlExterna,
+      origem: ehArquivoPublico ? "arquivo-publico" : "url",
+      src: ehArquivoPublico ? `${urlExterna}?v=${versao}` : urlExterna,
+      versao,
+    };
+  }
+
+  return {
+    temImagem: false,
+    nomeArquivo: null,
+    atualizadoEm: null,
+    urlExterna: "",
+    origem: "monograma",
+    src: null,
+    versao,
+  };
+}
+
 export async function anosDisponiveis(): Promise<number[]> {
   const linhas = await db
     .select({ ano: documentos.ano })

@@ -1,64 +1,11 @@
 import type { DocumentoListado } from "@/lib/services/documentos";
 import type { DocumentoItem, Configuracao } from "@/db/schema";
-import { formatarData, linhaEndereco, numeroRelacao } from "@/lib/format";
+import { formatarData, numeroRelacao } from "@/lib/format";
+import { Timbre } from "@/components/impressao/Timbre";
 
 export type ViaRelacao = "EXPEDIDOR" | "RECEBEDOR";
 
 const SITUACOES = ["Recebido", "Recebido com Ressalva", "Recusado", "Devolvido"];
-
-function Timbre({
-  config,
-  sigla,
-  compacto = false,
-}: {
-  config: Configuracao | undefined;
-  sigla: string;
-  compacto?: boolean;
-}) {
-  const hierarquia = (config?.orgaoHierarquia ?? "")
-    .split("|")
-    .map((linha) => linha.trim())
-    .filter(Boolean);
-  const endereco = linhaEndereco(
-    config?.endereco ?? "",
-    config?.cidade ?? "",
-    config?.uf ?? "",
-    config?.cep ?? "",
-    config?.telefone ?? "",
-  );
-
-  return (
-    <header className="flex items-center gap-3 border-b border-slate-900 pb-1.5">
-      {config?.logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={config.logoUrl} alt="Brasão" className={compacto ? "h-12 w-auto" : "h-16 w-auto"} />
-      ) : (
-        <span
-          className={`flex shrink-0 items-center justify-center rounded-full border border-slate-900 font-bold uppercase leading-tight text-slate-900 ${
-            compacto ? "h-12 w-12 text-[8px]" : "h-16 w-16 text-[9px]"
-          }`}
-        >
-          {sigla.slice(0, 8)}
-        </span>
-      )}
-      <div className="flex-1 text-center leading-snug">
-        {hierarquia.map((linha, indice) => (
-          <p
-            key={linha}
-            className={indice === 0 ? "text-[13px] font-bold uppercase text-slate-900" : "text-[12px] font-semibold uppercase text-slate-900"}
-          >
-            {linha}
-          </p>
-        ))}
-        <p className={compacto ? "text-[11.5px] font-bold uppercase text-slate-900" : "text-[12px] font-bold uppercase text-slate-900"}>
-          {config?.orgaoNome}
-        </p>
-        {endereco && <p className="text-[9.5px] text-slate-800">{endereco}</p>}
-      </div>
-      <span className={`shrink-0 ${compacto ? "w-12" : "w-16"}`} aria-hidden />
-    </header>
-  );
-}
 
 function Via({
   documento,
@@ -90,7 +37,7 @@ function Via({
         </p>
       </div>
 
-      <Timbre config={config} sigla={config?.orgaoSigla ?? "EEPMF"} compacto={compacta} />
+      <Timbre config={config} compacto={compacta} />
 
       <h1 className="mt-1 text-center text-[13px] font-bold uppercase tracking-wide text-slate-900">
         Relação de Remessa

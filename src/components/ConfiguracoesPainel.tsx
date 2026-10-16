@@ -12,6 +12,7 @@ import {
   type TipoDocumento,
 } from "@/lib/domain";
 import { montarNumero } from "@/lib/format";
+import { BrasaoUploader, type BrasaoValores } from "@/components/BrasaoUploader";
 import { Campo, Card, botaoClasses, cx, inputClasses } from "@/components/ui";
 
 export type ConfiguracaoValores = {
@@ -52,11 +53,13 @@ export function ConfiguracoesPainel({
   numeracao,
   ano,
   anos,
+  brasao,
 }: {
   configuracao: ConfiguracaoValores;
   numeracao: LinhaNumeracao[];
   ano: number;
   anos: number[];
+  brasao: BrasaoValores;
 }) {
   const router = useRouter();
   const [form, setForm] = useState(configuracao);
@@ -369,18 +372,11 @@ export function ConfiguracoesPainel({
                 placeholder="GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO"
               />
             </Campo>
-            <Campo
-              label="Brasão / logotipo"
-              className="md:col-span-3"
-              dica="URL da imagem (ex.: https://.../brasao.png) ou caminho no projeto (ex.: /brasao.png dentro da pasta public). Vazio = monograma com a sigla."
-            >
-              <input
-                className={inputClasses}
-                value={form.logoUrl}
-                onChange={(e) => atualizarForm("logoUrl", e.target.value)}
-                placeholder="/brasao.png"
-              />
-            </Campo>
+            <BrasaoUploader
+              brasao={brasao}
+              urlAtual={form.logoUrl}
+              aoAlterarUrl={(valor) => atualizarForm("logoUrl", valor)}
+            />
             <Campo label="Endereço" className="md:col-span-2">
               <input className={inputClasses} value={form.endereco} onChange={(e) => atualizarForm("endereco", e.target.value)} />
             </Campo>

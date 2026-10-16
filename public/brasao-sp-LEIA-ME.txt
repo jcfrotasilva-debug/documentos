@@ -1,0 +1,14 @@
+Brasão de Armas do Estado de São Paulo
+Arquivo: brasao-sp.svg
+
+Origem: acervo público (Wikimedia Commons) da arte oficial instituída pela
+Lei Estadual nº 145, de 3 de setembro de 1948. Símbolo oficial de Estado
+brasileiro — em domínio público, podendo ser usado em documentos oficiais.
+
+Referências oficiais para download do arquivo original:
+- Governo do Estado de São Paulo: https://www.saopaulo.sp.gov.br/conhecasp/historia/brasao-do-estado-de-sao-paulo/
+- Secretaria de Comunicação (identidade visual): https://www.comunicacao.sp.gov.br/secom/publicidade/materiais/identidade%20visual
+
+Como usar no sistema: o arquivo já está em public/ e é usado automaticamente
+no timbre. Para substituí-lo pela versão oficial mais recente, faça o upload em
+Numeração e órgão → Dados institucionais → Brasão / logotipo.

@@ -246,8 +246,13 @@ export const configuracoes = pgTable("configuracoes", {
   orgaoHierarquia: varchar("orgao_hierarquia", { length: 400 })
     .notNull()
     .default("GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO"),
-  /* Brasão oficial: URL ou caminho em /public (ex.: /brasao.png). Vazio = monograma. */
+  /* Brasão oficial: URL ou caminho em /public (ex.: /brasao-sp.svg). Vazio = monograma. */
   logoUrl: varchar("logo_url", { length: 300 }).notNull().default(""),
+  /* Imagem enviada pelo usuário, guardada no banco em base64 (data URL).
+     Necessário porque ambientes serverless não permitem gravar em disco. */
+  logoDados: text("logo_dados"),
+  logoNomeArquivo: varchar("logo_nome_arquivo", { length: 200 }),
+  logoAtualizadoEm: timestamp("logo_atualizado_em", { withTimezone: true }),
   endereco: varchar("endereco", { length: 200 }).notNull().default(""),
   cidade: varchar("cidade", { length: 120 }).notNull().default(""),
   uf: varchar("uf", { length: 2 }).notNull().default(""),

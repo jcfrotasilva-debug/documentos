@@ -376,3 +376,55 @@ Sem valor em **Brasão**, é impresso um monograma circular com a sigla — para
 Recomendado papel **A4 retrato**, margens normais, sem cabeçalho/rodapé do navegador.
 O menu do sistema é ocultado automaticamente na impressão. Os demais tipos de documento (Ofício, Ofício APM,
 Protocolo, Processo, Informação) continuam no padrão de ofício com timbre institucional.
+
+---
+
+## Brasão do Estado de São Paulo no timbre
+
+O brasão é impresso no **canto superior esquerdo** dos documentos (Ofício e Relação de Remessa).
+
+### Já vem pronto
+
+O projeto inclui o brasão oficial em `public/brasao-sp.svg` — arte vetorial (370×430, SVG, sem rasterização), do
+acervo público do símbolo oficial instituído pela Lei Estadual nº 145/1948 (domínio público, uso permitido em
+documentos oficiais). Já está configurado como padrão em `/brasao-sp.svg`.
+
+Onde obter/repor a versão oficial mais recente:
+
+- Governo do Estado: https://www.saopaulo.sp.gov.br/conhecasp/historia/brasao-do-estado-de-sao-paulo/
+- Secretaria de Comunicação (identidade visual e papel timbrado): https://www.comunicacao.sp.gov.br/secom/publicidade/materiais/identidade%20visual
+
+### Função de envio (upload) da imagem
+
+*Numeração e órgão → Dados institucionais → **Brasão / logotipo do timbre***:
+
+| Ação | Comportamento |
+|---|---|
+| **📎 Enviar imagem do brasão** | abre o seletor de arquivos; aceita PNG, JPG, SVG, WEBP e GIF até **1 MB** |
+| **Substituir** | troca a imagem atual por outra |
+| **Remover imagem** | apaga o envio e volta a usar o arquivo público/URL |
+| **Caminho/URL** | alternativa ao upload: `/brasao-sp.svg` (arquivo do projeto) ou `https://...` |
+| **Pré-visualização** | mostra exatamente como o brasão sairá na impressão, com a origem em uso |
+
+### Prioridade de uso
+
+1. **Imagem enviada** (guardada no banco de dados — ambientes serverless não permitem gravar em disco);
+2. **Arquivo do projeto** informado em *Caminho/URL* (ex.: `/brasao-sp.svg`);
+3. **URL externa** (`https://...`);
+4. **Monograma** com a sigla, quando não há imagem.
+
+### API
+
+```bash
+POST   /api/configuracoes/brasao    # {"arquivo":"data:image/png;base64,...","nomeArquivo":"brasao.png"}
+DELETE /api/configuracoes/brasao    # remove a imagem enviada
+GET    /api/brasao                  # serve a imagem (com cache por versão)
+```
+
+Formatos fora da lista são rejeitados com **422**; imagens acima de 1 MB também. O `GET /api/brasao` responde com
+`Cache-Control: immutable` e versão no `ETag`, então trocar o arquivo não deixa imagem antiga em cache.
+
+### Verificação rápida
+
+Abra a tela de impressão de qualquer documento: o brasão deve aparecer no topo à esquerda. Na Relação de Remessa,
+ele aparece nas **duas vias**.

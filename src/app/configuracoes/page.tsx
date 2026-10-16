@@ -1,7 +1,7 @@
 import { ConfiguracoesPainel, type LinhaNumeracao } from "@/components/ConfiguracoesPainel";
 import { ManutencaoBase } from "@/components/ManutencaoBase";
 import { hojeISO } from "@/lib/format";
-import { anosDisponiveis, buscarConfiguracao } from "@/lib/services/documentos";
+import { anosDisponiveis, buscarConfiguracao, resolverBrasao } from "@/lib/services/documentos";
 import { painelSequencia } from "@/lib/services/sequencia";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,8 @@ export default async function ConfiguracoesPage() {
     painelSequencia(anoAtual),
     anosDisponiveis(),
   ]);
+
+  const brasaoResolvido = resolverBrasao(config ?? null);
 
   const linhas: LinhaNumeracao[] = sequencias.map((linha) => ({
     movimentacao: linha.movimentacao,
@@ -58,6 +60,12 @@ export default async function ConfiguracoesPage() {
         numeracao={linhas}
         ano={anoAtual}
         anos={anos}
+        brasao={{
+          src: brasaoResolvido.src,
+          origem: brasaoResolvido.origem,
+          nomeArquivo: brasaoResolvido.nomeArquivo,
+          urlExterna: brasaoResolvido.urlExterna,
+        }}
       />
 
       <ManutencaoBase />

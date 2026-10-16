@@ -3,8 +3,8 @@
 --
 -- Como usar: Supabase → SQL Editor → New query → cole tudo → Run.
 -- Alternativa: npx drizzle-kit push --config drizzle.prod.config.ts
--- Idempotente: pode ser executado quantas vezes precisar, inclusive em bancos
--- que já possuem tabelas (colunas novas são adicionadas com IF NOT EXISTS).
+-- Idempotente: pode ser executado quantas vezes precisar, em banco novo ou
+-- já existente (colunas com IF NOT EXISTS; restrições recriadas com segurança).
 -- =============================================================================
 
 DO $$ BEGIN
@@ -160,8 +160,17 @@ CREATE TABLE IF NOT EXISTS "responsaveis" (
 
 CREATE UNIQUE INDEX IF NOT EXISTS "responsaveis_nome_idx" ON "responsaveis" USING btree ("nome");
 
--- -----------------------------------------------------------------------------
--- Colunas adicionadas em versões posteriores (seguro para bancos existentes)
--- -----------------------------------------------------------------------------
-ALTER TABLE "configuracoes" ADD COLUMN IF NOT EXISTS "logo_url" varchar(300) DEFAULT '' NOT NULL;
+-- --- Colunas e restrições (seguro para bancos já existentes) ----------------
+ALTER TABLE "documento_itens" DROP CONSTRAINT IF EXISTS "documento_itens_documento_id_documentos_id_fk";
+ALTER TABLE "documento_itens" ADD CONSTRAINT "documento_itens_documento_id_documentos_id_fk" FOREIGN KEY ("documento_id") REFERENCES "public"."documentos"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "documento_movimentos" DROP CONSTRAINT IF EXISTS "documento_movimentos_documento_id_documentos_id_fk";
+ALTER TABLE "documento_movimentos" ADD CONSTRAINT "documento_movimentos_documento_id_documentos_id_fk" FOREIGN KEY ("documento_id") REFERENCES "public"."documentos"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "documentos" DROP CONSTRAINT IF EXISTS "documentos_setor_origem_id_setores_id_fk";
+ALTER TABLE "documentos" ADD CONSTRAINT "documentos_setor_origem_id_setores_id_fk" FOREIGN KEY ("setor_origem_id") REFERENCES "public"."setores"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "documentos" DROP CONSTRAINT IF EXISTS "documentos_setor_destino_id_setores_id_fk";
+ALTER TABLE "documentos" ADD CONSTRAINT "documentos_setor_destino_id_setores_id_fk" FOREIGN KEY ("setor_destino_id") REFERENCES "public"."setores"("id") ON DELETE set null ON UPDATE no action;
 ALTER TABLE "configuracoes" ADD COLUMN IF NOT EXISTS "orgao_hierarquia" varchar(400) DEFAULT 'GOVERNO DO ESTADO DE SÃO PAULO|SECRETARIA DE ESTADO DA EDUCAÇÃO' NOT NULL;
+ALTER TABLE "configuracoes" ADD COLUMN IF NOT EXISTS "logo_url" varchar(300) DEFAULT '' NOT NULL;
+ALTER TABLE "configuracoes" ADD COLUMN IF NOT EXISTS "logo_dados" text;
+ALTER TABLE "configuracoes" ADD COLUMN IF NOT EXISTS "logo_nome_arquivo" varchar(200);
+ALTER TABLE "configuracoes" ADD COLUMN IF NOT EXISTS "logo_atualizado_em" timestamp with time zone;
