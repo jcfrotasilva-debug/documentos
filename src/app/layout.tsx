@@ -5,6 +5,7 @@ import { DiagnosticoFalha } from "@/components/DiagnosticoFalha";
 import { NavLateral } from "@/components/NavLateral";
 import { botaoClasses } from "@/components/ui";
 import { diagnosticarBanco, infoConexao } from "@/db";
+import { anoAtual } from "@/lib/format";
 import { buscarConfiguracao } from "@/lib/services/documentos";
 import "./globals.css";
 
@@ -77,7 +78,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           </header>
           <main className="app-main mx-auto max-w-[1500px] px-4 py-6 lg:px-8 lg:py-8">{children}</main>
           <footer className="no-print mx-auto max-w-[1500px] px-4 pb-8 text-[11px] text-slate-400 lg:px-8">
-            SICED · {new Date().getFullYear()} — expediente escolar com rastreabilidade de movimentações.
+            SICED · {anoAtual()} — expediente escolar com rastreabilidade de movimentações.
           </footer>
         </div>
       </body>

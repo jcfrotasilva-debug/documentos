@@ -428,3 +428,59 @@ Formatos fora da lista são rejeitados com **422**; imagens acima de 1 MB també
 
 Abra a tela de impressão de qualquer documento: o brasão deve aparecer no topo à esquerda. Na Relação de Remessa,
 ele aparece nas **duas vias**.
+
+---
+
+## Datas, fuso horário e virada de exercício
+
+### O problema que existia (e foi corrigido)
+
+O servidor da Vercel roda em **UTC**. O código antigo calculava "hoje" a partir do fuso do servidor, o que gerava
+três defeitos:
+
+| Defeito | Efeito real |
+|---|---|
+| `hojeISO()` sem fuso explícito | às **21h de 31/12** no Brasil já era 01/01 em UTC → o documento nascia no **exercício seguinte** |
+| `formatarDataHora()` sem fuso | histórico de movimentações e sincronizações mostravam **horário 3 horas adiantado** |
+| comparação de prazo com data UTC | documento com prazo **hoje** aparecia como **vencido** a partir das 21h |
+| série mensal do painel com `Date` | risco de deslocar o mês inicial na aritmética de datas |
+
+### A correção
+
+Toda a lógica de datas foi centralizada em `src/lib/format.ts`, com fuso explícito:
+
+- **`APP_TIMEZONE`** (padrão `America/Sao_Paulo`) define o fuso de "hoje", da hora exibida e dos prazos.
+- **`hojeISO()`** usa `Intl.DateTimeFormat('en-CA', { timeZone })` → devolve exatamente `AAAA-MM-DD` no fuso local.
+- **`formatarDataHora()`** formata com `timeZone` → 14:06 em Brasília, e não 17:06 UTC.
+- **Aritmética de calendário em strings** (`deslocarDias`, `deslocarMeses`, `ultimoDiaDoMes`, `serieDeMeses`): soma de
+  dias/meses sem `Date` local, imune a fuso e horário de verão (31/01 + 1 mês = 28/02).
+- **`validarDataISO()`** rejeita datas impossíveis (30/02, mês 13).
+- O exercício de um documento é **sempre derivado da data do documento** no servidor — não é possível gravar um
+  documento de 31/12/2026 no exercício 2027.
+
+### Como funciona a virada de ano
+
+1. **Automático no primeiro documento**: ao registrar um expediente datado de 2027, o sistema cria as sequências de
+   2027 na hora e numera a partir de `00001` (`OF-00001/2027`). As sequências de 2026 permanecem intactas.
+2. **Antecipado pela tela**: *Numeração e órgão → **Virada de exercício*** → informe o ano (padrão: próximo) →
+   **Preparar exercício**. São criadas as 12 combinações (expedição/recebimento × 6 espécies), todas em `00001`.
+   A tela mostra quais exercícios já existem e destaca o atual.
+3. **Numeração independente por ano**: o índice de unicidade é `movimentacao + tipo + ano + numeroSequencial`, então
+   `OF-00080/2026` e `OF-00080/2027` coexistem sem conflito.
+4. **Consulta e relatórios**: o filtro por exercício e os relatórios já consideram o ano; o acervo mantém o histórico
+   de todos os anos.
+5. **Continuidade fora do padrão**: se a escola já emitiu até 95 em 2027, use *Definir próximo nº* = 96 (ou
+   *Igualar ao acervo*).
+
+### Verificação rápida
+
+```bash
+# "hoje" e a hora no fuso da aplicação
+curl -s https://SEU-DOMINIO/api/health | python -m json.tool   # ok: true
+
+# preparar 2027
+curl -X POST https://SEU-DOMINIO/api/numeracao -H 'Content-Type: application/json' -d '{"ano":2027}'
+
+# conferir as sequências de 2027
+curl -s "https://SEU-DOMINIO/api/documentos/proximo-numero?ano=2027" | python -m json.tool
+```

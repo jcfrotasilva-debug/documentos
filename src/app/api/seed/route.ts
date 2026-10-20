@@ -9,7 +9,7 @@ import {
   type Movimentacao,
   type TipoDocumento,
 } from "@/lib/domain";
-import { hojeISO } from "@/lib/format";
+import { deslocarDias, hojeISO } from "@/lib/format";
 import { dadosDemoHabilitados } from "@/lib/runtime";
 import { criarDocumento, salvarConfiguracao } from "@/lib/services/documentos";
 import { documentoInputSchema, primeiraMensagemErro, type DocumentoInput } from "@/lib/validation";
@@ -43,9 +43,7 @@ type Modelo = Omit<
 };
 
 function deslocar(dias: number): string {
-  const data = new Date(`${hojeISO()}T00:00:00`);
-  data.setDate(data.getDate() + dias);
-  return data.toISOString().slice(0, 10);
+  return deslocarDias(hojeISO(), dias);
 }
 
 const MODELOS: Modelo[] = [

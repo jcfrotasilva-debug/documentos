@@ -1,10 +1,17 @@
+import { BotaoImprimir } from "@/components/BotaoImprimir";
 import { FiltrosRelatorio } from "@/components/FiltrosRelatorio";
 import { TabelaDocumentos } from "@/components/TabelaDocumentos";
+import { Timbre } from "@/components/impressao/Timbre";
 import { Card, StatCard, cx } from "@/components/ui";
 import { CONFIG_MEIO, CONFIG_STATUS, CONFIG_TIPO } from "@/lib/domain";
 import { parseFiltros } from "@/lib/filters";
 import { formatarData } from "@/lib/format";
-import { anosDisponiveis, listarDocumentos, relatorioPeriodo } from "@/lib/services/documentos";
+import {
+  anosDisponiveis,
+  buscarConfiguracao,
+  listarDocumentos,
+  relatorioPeriodo,
+} from "@/lib/services/documentos";
 
 export const dynamic = "force-dynamic";
 
@@ -30,14 +37,26 @@ export default async function RelatoriosPage({ searchParams }: Props) {
       ? `${filtros.de ? formatarData(filtros.de) : "início"} até ${filtros.ate ? formatarData(filtros.ate) : "hoje"}`
       : "todo o acervo";
 
+  const config = await buscarConfiguracao();
+
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Relatórios analíticos</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Consolidado de expedição por período, espécie documental, unidade, meio de envio e responsável. Exportável em
-          CSV para prestação de contas.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="no-print">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Relatórios analíticos</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Consolidado de expedição por período, espécie documental, meio de envio e responsável.
+          </p>
+        </div>
+        <div className="no-print flex items-center gap-2">
+          <BotaoImprimir />
+        </div>
+      </div>
+
+      <div className="print-only hidden print:block">
+        <Timbre config={config} className="mb-6" />
+        <h1 className="text-center text-lg font-bold uppercase tracking-wide">Relatório de Expedientes</h1>
+        <p className="mt-1 text-center text-sm text-slate-600">Período: {periodo}</p>
       </div>
 
       <FiltrosRelatorio

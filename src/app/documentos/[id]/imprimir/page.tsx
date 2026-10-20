@@ -5,7 +5,7 @@ import { RelacaoRemessaDoc } from "@/components/impressao/RelacaoRemessaDoc";
 import { Timbre } from "@/components/impressao/Timbre";
 import { botaoClasses } from "@/components/ui";
 import { CONFIG_MEIO, CONFIG_SIGILO, CONFIG_TIPO } from "@/lib/domain";
-import { formatarData, formatarMoeda } from "@/lib/format";
+import { dataPorExtenso, formatarData, formatarMoeda } from "@/lib/format";
 import { buscarConfiguracao, buscarDocumento } from "@/lib/services/documentos";
 import { buscarResponsavelPorNome } from "@/lib/services/responsaveis";
 
@@ -13,13 +13,6 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ id: string }> };
 
-function dataLonga(iso: string, cidade: string): string {
-  const [ano, mes, dia] = iso.slice(0, 10).split("-").map(Number);
-  const texto = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" }).format(
-    new Date(Date.UTC(ano, mes - 1, dia)),
-  );
-  return `${cidade ? `${cidade}, ` : ""}${texto}`;
-}
 
 export default async function ImprimirDocumentoPage({ params }: Props) {
   const { id } = await params;
@@ -39,7 +32,6 @@ export default async function ImprimirDocumentoPage({ params }: Props) {
   const ehRelacaoRemessa = documento.tipo === "RELACAO_REMESSA";
   const totalItens = itens.reduce((soma, item) => soma + item.quantidade, 0);
   const valorItens = itens.reduce((soma, item) => soma + (item.valor ? Number(item.valor) : 0), 0);
-  const cidade = config?.cidade ?? "";
 
   return (
     <div className="space-y-4">
@@ -76,7 +68,7 @@ export default async function ImprimirDocumentoPage({ params }: Props) {
           <div className="text-right">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Número</p>
             <p className="mt-1 font-mono text-lg font-bold text-slate-900">{documento.numero}</p>
-            <p className="mt-1 text-xs text-slate-600">{dataLonga(documento.dataDocumento, cidade)}</p>
+            <p className="mt-1 text-xs text-slate-600">{dataPorExtenso(documento.dataDocumento, config?.cidade ?? "", config?.uf ?? "")}</p>
           </div>
         </div>
 

@@ -61,9 +61,7 @@ export default async function SupabasePage() {
           label="Última sincronização"
           valor={
             analise.importacao.ultimaSincronizacao
-              ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(
-                  analise.importacao.ultimaSincronizacao.criadoEm,
-                )
+              ? formatarDataHora(analise.importacao.ultimaSincronizacao.criadoEm)
               : "—"
           }
           tom="slate"

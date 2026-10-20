@@ -70,6 +70,8 @@ export function ConfiguracoesPainel({
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState<string | null>(null);
+  const [novoExercicio, setNovoExercicio] = useState(String(ano + 1));
+  const [avisoExercicio, setAvisoExercicio] = useState<string | null>(null);
 
   const atualizarForm = (campo: keyof ConfiguracaoValores, valor: string) =>
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -190,6 +192,41 @@ export function ConfiguracoesPainel({
     }
   };
 
+  const prepararExercicio = async () => {
+    const valor = Number(novoExercicio);
+    setErro(null);
+    setMensagem(null);
+    setAvisoExercicio(null);
+    if (!Number.isInteger(valor) || valor < 1990 || valor > 2200) {
+      setErro("Informe um exercício válido (entre 1990 e 2200).");
+      return;
+    }
+    if (valor === anoSel) {
+      setAvisoExercicio(`O exercício ${valor} já está aberto abaixo.`);
+      return;
+    }
+    setSalvando("exercicio");
+    try {
+      const resposta = await fetch("/api/numeracao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ano: valor }),
+      });
+      const dados = (await resposta.json()) as { ok?: boolean; erro?: string; mensagem?: string; criadas?: number };
+      if (!resposta.ok) {
+        setErro(dados.erro ?? "Não foi possível preparar o exercício.");
+        return;
+      }
+      setAvisoExercicio(dados.mensagem ?? `Exercício ${valor} preparado.`);
+      trocarAno(valor);
+      router.refresh();
+    } catch {
+      setErro("Falha de comunicação com o servidor.");
+    } finally {
+      setSalvando(null);
+    }
+  };
+
   const trocarAno = (novoAno: number) => {
     setAnoSel(novoAno);
     setProximos({});
@@ -202,6 +239,59 @@ export function ConfiguracoesPainel({
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{mensagem}</p>
       )}
       {erro && <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{erro}</p>}
+
+      <Card
+        titulo="Virada de exercício"
+        subtitulo="A numeração é reiniciada por ano: em 1º de janeiro o primeiro documento do ano já recebe 00001 automaticamente. Use o botão para abrir o próximo exercício com antecedência."
+      >
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold text-slate-700">Exercício a preparar</span>
+            <input
+              type="number"
+              min={1990}
+              max={2200}
+              className={cx(inputClasses, "w-32 tabular-nums")}
+              value={novoExercicio}
+              onChange={(evento) => setNovoExercicio(evento.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className={botaoClasses("secundario")}
+            onClick={prepararExercicio}
+            disabled={salvando !== null}
+          >
+            {salvando === "exercicio" ? "Preparando..." : "Preparar exercício"}
+          </button>
+          <p className="max-w-xl text-[11px] text-slate-500">
+            Cria as 12 sequências (expedição e recebimento × 6 espécies) do ano informado, todas em{" "}
+            <strong>00001</strong>. O ano de cada documento é sempre o da <strong>data do documento</strong> — ao
+            registrar um expediente datado de 05/01/2027, ele entra automaticamente no exercício 2027.
+          </p>
+        </div>
+        {avisoExercicio && (
+          <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-800">{avisoExercicio}</p>
+        )}
+        <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+          Exercícios disponíveis:{" "}
+          {Array.from(new Set([anoSel, ...anos]))
+            .sort((a, b) => b - a)
+            .map((valor) => (
+              <span
+                key={valor}
+                className={cx(
+                  "mr-1 inline-block rounded px-1.5 py-0.5 font-semibold",
+                  valor === ano ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-600 ring-1 ring-slate-200",
+                )}
+                title={valor === ano ? "Exercício corrente" : undefined}
+              >
+                {valor}
+                {valor === ano ? " (atual)" : ""}
+              </span>
+            ))}
+        </div>
+      </Card>
 
       <Card
         titulo="Sequência de numeração — definir o próximo número"

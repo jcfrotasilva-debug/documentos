@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { numeracao } from "@/db/schema";
 import { CONFIG_TIPO, TIPOS_DOCUMENTO, prefixoPadrao, type Movimentacao, type TipoDocumento } from "@/lib/domain";
 import { hojeISO } from "@/lib/format";
-import { listarNumeracao } from "@/lib/services/documentos";
+import { anosDisponiveis, listarNumeracao } from "@/lib/services/documentos";
 import { painelSequencia } from "@/lib/services/sequencia";
 import { numeracaoInputSchema, primeiraMensagemErro } from "@/lib/validation";
 
@@ -72,7 +72,11 @@ export async function POST(request: NextRequest) {
     corpo = {};
   }
   const ano = Number(corpo.ano) || Number(hojeISO().slice(0, 4));
+  if (!Number.isInteger(ano) || ano < 1990 || ano > 2200) {
+    return Response.json({ erro: "Exercício inválido" }, { status: 422 });
+  }
 
+  let criadas = 0;
   for (const movimentacao of ["EXPEDICAO", "RECEBIMENTO"] as Movimentacao[]) {
     for (const tipo of TIPOS_DOCUMENTO) {
       const [existente] = await db
@@ -89,10 +93,21 @@ export async function POST(request: NextRequest) {
           digitos: 5,
           ultimoNumero: 0,
         });
+        criadas += 1;
       }
     }
   }
 
   const linhas = await listarNumeracao(ano);
-  return Response.json({ ano, numeracao: linhas, tipos: TIPOS_DOCUMENTO.map((tipo) => CONFIG_TIPO[tipo].label) });
+  return Response.json({
+    ano,
+    numeracao: linhas,
+    criadas,
+    exercicios: await anosDisponiveis(),
+    mensagem:
+      criadas === 0
+        ? `O exercício ${ano} já estava preparado (12 sequências).`
+        : `Exercício ${ano} preparado: ${criadas} sequência(s) iniciadas em 00001.`,
+    tipos: TIPOS_DOCUMENTO.map((tipo) => CONFIG_TIPO[tipo].label),
+  });
 }

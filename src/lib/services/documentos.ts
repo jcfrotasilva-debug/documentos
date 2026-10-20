@@ -22,7 +22,7 @@ import {
   type StatusDocumento,
   type TipoDocumento,
 } from "@/lib/domain";
-import { gerarCSV, hojeISO, montarNumero } from "@/lib/format";
+import { deslocarMeses as deslocarMesesLocal, gerarCSV, hojeISO, montarNumero, primeiroDiaDoMes, serieDeMeses } from "@/lib/format";
 import type { DocumentoInput } from "@/lib/validation";
 
 const origem = alias(setores, "origem");
@@ -306,7 +306,9 @@ export type DocumentoCriado = { id: number; numero: string; ano: number; movimen
 export async function criarDocumento(input: DocumentoInput, usuario = "Sistema"): Promise<DocumentoCriado> {
   const tipo = input.tipo as TipoDocumento;
   const movimentacao = input.movimentacao as Movimentacao;
-  const ano = input.ano ?? Number(input.dataDocumento.slice(0, 4));
+  /* O exercício é sempre o da data do documento: elimina o risco de enviar
+     `ano` divergente (ex.: data 31/12/2026 com ano 2027 na virada). */
+  const ano = Number(input.dataDocumento.slice(0, 4));
   const status = input.status as StatusDocumento;
 
   return db.transaction(async (tx) => {
@@ -507,9 +509,7 @@ export type EstatisticasDashboard = {
 export async function estatisticasDashboard(): Promise<EstatisticasDashboard> {
   const hoje = hojeISO();
   const inicioMes = `${hoje.slice(0, 7)}-01`;
-  const inicioSerie = new Date(`${hoje.slice(0, 7)}-01T00:00:00`);
-  inicioSerie.setMonth(inicioSerie.getMonth() - 11);
-  const desde = inicioSerie.toISOString().slice(0, 10);
+  const desde = primeiroDiaDoMes(deslocarMesesLocal(hoje.slice(0, 7), -11));
 
   const [
     totalResultado,
@@ -595,13 +595,10 @@ export async function estatisticasDashboard(): Promise<EstatisticasDashboard> {
     mapaSerie.set(linha.mes, atual);
   });
 
-  const serieMensal: { mes: string; expedicao: number; recebimento: number }[] = [];
-  for (let i = 11; i >= 0; i -= 1) {
-    const ref = new Date(`${hoje.slice(0, 7)}-01T00:00:00`);
-    ref.setMonth(ref.getMonth() - i);
-    const chave = ref.toISOString().slice(0, 7);
-    serieMensal.push({ mes: chave, ...(mapaSerie.get(chave) ?? { expedicao: 0, recebimento: 0 }) });
-  }
+  const serieMensal = serieDeMeses(hoje.slice(0, 7), 12).map((chave) => ({
+    mes: chave,
+    ...(mapaSerie.get(chave) ?? { expedicao: 0, recebimento: 0 }),
+  }));
 
   const totalMov = (movimentacao: Movimentacao) =>
     Number(porMovResultado.find((l) => l.movimentacao === movimentacao)?.total ?? 0);
@@ -879,5 +876,6 @@ export async function anosDisponiveis(): Promise<number[]> {
     .orderBy(desc(documentos.ano));
   const anos = linhas.map((l) => Number(l.ano));
   const atual = Number(hojeISO().slice(0, 4));
-  return Array.from(new Set([atual, atual - 1, ...anos])).sort((a, b) => b - a);
+  /* Inclui o próximo exercício para permitir preparar a virada de ano com antecedência. */
+  return Array.from(new Set([atual + 1, atual, atual - 1, ...anos])).sort((a, b) => b - a);
 }

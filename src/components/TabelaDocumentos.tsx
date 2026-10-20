@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { DocumentoListado } from "@/lib/services/documentos";
 import { CONFIG_TIPO } from "@/lib/domain";
-import { formatarData } from "@/lib/format";
+import { formatarData, hojeISO } from "@/lib/format";
 import { ChipMovimentacao, ChipPrioridade, ChipStatus, ChipTipo, cx } from "@/components/ui";
 
 export function TabelaDocumentos({
@@ -11,6 +11,7 @@ export function TabelaDocumentos({
   documentos: DocumentoListado[];
   compacta?: boolean;
 }) {
+  const hoje = hojeISO();
   return (
     <div className="overflow-x-auto scroll-fino">
       <table className="tabela-docs w-full min-w-[1040px] border-collapse text-sm">
@@ -33,7 +34,7 @@ export function TabelaDocumentos({
             const vencido =
               documento.prazoResposta &&
               !["RECEBIDO", "ARQUIVADO", "CANCELADO"].includes(documento.status) &&
-              documento.prazoResposta < new Date().toISOString().slice(0, 10);
+              documento.prazoResposta < hoje;
             return (
               <tr key={documento.id} className="align-top transition hover:bg-slate-50/80">
                 <td className="px-3 py-3">
