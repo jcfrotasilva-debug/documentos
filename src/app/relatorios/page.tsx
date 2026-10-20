@@ -1,17 +1,11 @@
-import { BotaoImprimir } from "@/components/BotaoImprimir";
+import { BotaoImprimirRelatorio } from "@/components/BotaoImprimirRelatorio";
 import { FiltrosRelatorio } from "@/components/FiltrosRelatorio";
 import { TabelaDocumentos } from "@/components/TabelaDocumentos";
-import { Timbre } from "@/components/impressao/Timbre";
 import { Card, StatCard, cx } from "@/components/ui";
-import { CONFIG_MEIO, CONFIG_STATUS, CONFIG_TIPO } from "@/lib/domain";
+import { CONFIG_MEIO, CONFIG_MOVIMENTACAO, CONFIG_STATUS, CONFIG_TIPO } from "@/lib/domain";
 import { parseFiltros } from "@/lib/filters";
 import { formatarData } from "@/lib/format";
-import {
-  anosDisponiveis,
-  buscarConfiguracao,
-  listarDocumentos,
-  relatorioPeriodo,
-} from "@/lib/services/documentos";
+import { anosDisponiveis, listarDocumentos, relatorioPeriodo } from "@/lib/services/documentos";
 
 export const dynamic = "force-dynamic";
 
@@ -32,135 +26,169 @@ export default async function RelatoriosPage({ searchParams }: Props) {
   const maiorTipo = Math.max(1, ...relatorio.porTipo.map((item) => item.total));
   const maiorInteressado = Math.max(1, ...relatorio.porInteressado.map((item) => item.total));
   const maiorMes = Math.max(1, ...relatorio.porMes.map((item) => item.total));
+
   const periodo =
     filtros.de || filtros.ate
       ? `${filtros.de ? formatarData(filtros.de) : "início"} até ${filtros.ate ? formatarData(filtros.ate) : "hoje"}`
-      : "todo o acervo";
-
-  const config = await buscarConfiguracao();
+      : filtros.ano && filtros.ano !== "TODOS"
+        ? `Exercício ${filtros.ano}`
+        : "Todo o acervo";
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="no-print">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Relatórios analíticos</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Consolidado de expedição por período, espécie documental, meio de envio e responsável.
-          </p>
+    <div>
+      {/* ------------------------------------------------------------------ */}
+      {/* TELA: painel analítico completo                                    */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="no-print space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Relatórios analíticos</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Consolidado de expedição por período, espécie documental, meio de envio e interessado. A impressão leva
+              apenas o detalhamento do período, em formato compacto.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <BotaoImprimirRelatorio
+              href={`/relatorios/imprimir?${new URLSearchParams({
+                ...(filtros.de ? { de: filtros.de } : {}),
+                ...(filtros.ate ? { ate: filtros.ate } : {}),
+                ...(filtros.tipo && filtros.tipo !== "TODOS" ? { tipo: filtros.tipo } : {}),
+                ...(filtros.movimentacao && filtros.movimentacao !== "TODOS" ? { movimentacao: filtros.movimentacao } : {}),
+                ...(filtros.status && filtros.status !== "TODOS" ? { status: filtros.status } : {}),
+                ...(filtros.ano && filtros.ano !== "TODOS" ? { ano: String(filtros.ano) } : {}),
+                ...(filtros.q ? { q: filtros.q } : {}),
+              }).toString()}`}
+            />
+          </div>
         </div>
-        <div className="no-print flex items-center gap-2">
-          <BotaoImprimir />
+
+        <FiltrosRelatorio
+          valores={{
+            de: filtros.de ?? "",
+            ate: filtros.ate ?? "",
+            tipo: filtros.tipo ?? "TODOS",
+            status: filtros.status ?? "TODOS",
+            ano: filtros.ano ? String(filtros.ano) : "TODOS",
+          }}
+          anos={anos}
+        />
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Documentos no período" valor={relatorio.total} tom="indigo" icone="▤" apoio={periodo} />
+          <StatCard label="Páginas expedidas" valor={relatorio.paginas} tom="sky" icone="≡" apoio="Somatório de páginas" />
+          <StatCard
+            label="Tipos distintos"
+            valor={relatorio.porTipo.length}
+            tom="emerald"
+            icone="◫"
+            apoio="Espécies documentais movimentadas"
+          />
+          <StatCard
+            label="Interessados distintos"
+            valor={relatorio.porInteressado.length}
+            tom="amber"
+            icone="◎"
+            apoio="Interessados distintos no período"
+          />
         </div>
-      </div>
 
-      <div className="print-only hidden print:block">
-        <Timbre config={config} className="mb-6" />
-        <h1 className="text-center text-lg font-bold uppercase tracking-wide">Relatório de Expedientes</h1>
-        <p className="mt-1 text-center text-sm text-slate-600">Período: {periodo}</p>
-      </div>
+        <div className="grid gap-5 xl:grid-cols-3">
+          <Card titulo="Movimentação" subtitulo="Expedição vs. Recebimento">
+            <ul className="space-y-2">
+              {relatorio.porMovimentacao.map((item) => (
+                <li key={item.chave} className="flex items-center justify-between border-b border-slate-100 pb-2 text-xs">
+                  <span className="text-slate-700">{CONFIG_MOVIMENTACAO[item.chave]?.label ?? item.chave}</span>
+                  <span className="tabular-nums font-semibold text-slate-800">{item.total}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
 
-      <FiltrosRelatorio
-        valores={{
-          de: filtros.de ?? "",
-          ate: filtros.ate ?? "",
-          tipo: filtros.tipo ?? "TODOS",
-          status: filtros.status ?? "TODOS",
-          ano: filtros.ano ? String(filtros.ano) : "TODOS",
-        }}
-        anos={anos}
-      />
+          <Card titulo="Por espécie documental" subtitulo="Volume e participação">
+            <ul className="space-y-3">
+              {relatorio.porTipo.length === 0 && <li className="text-xs text-slate-500">Sem dados no período.</li>}
+              {relatorio.porTipo.map((item) => (
+                <li key={item.chave}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-slate-700">{CONFIG_TIPO[item.chave]?.label ?? item.chave}</span>
+                    <span className="tabular-nums text-slate-600">{item.total}</span>
+                  </div>
+                  <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={cx("h-full rounded-full", CONFIG_TIPO[item.chave]?.cor ?? "bg-slate-500")}
+                      style={{ width: `${(item.total / maiorTipo) * 100}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Documentos no período" valor={relatorio.total} tom="indigo" icone="▤" apoio={periodo} />
-        <StatCard label="Páginas expedidas" valor={relatorio.paginas} tom="sky" icone="≡" apoio="Somatório de páginas" />
-        <StatCard
-          label="Tipos distintos"
-          valor={relatorio.porTipo.length}
-          tom="emerald"
-          icone="◫"
-          apoio="Espécies documentais movimentadas"
-        />
-        <StatCard
-          label="Unidades de destino"
-          valor={relatorio.porInteressado.length}
-          tom="amber"
-          icone="◎"
-          apoio="Interessados distintos no período"
-        />
-      </div>
+          <Card titulo="Por situação" subtitulo="Posição de tramitação no período">
+            <ul className="space-y-2">
+              {relatorio.porStatus.length === 0 && <li className="text-xs text-slate-500">Sem dados no período.</li>}
+              {relatorio.porStatus.map((item) => (
+                <li key={item.chave} className="flex items-center justify-between border-b border-slate-100 pb-2 text-xs">
+                  <span className="text-slate-700">{CONFIG_STATUS[item.chave]?.label ?? item.chave}</span>
+                  <span className="tabular-nums font-semibold text-slate-800">{item.total}</span>
+                </li>
+              ))}
+            </ul>
 
-      <div className="grid gap-5 xl:grid-cols-3">
-        <Card titulo="Por espécie documental" subtitulo="Volume e participação">
-          <ul className="space-y-3">
-            {relatorio.porTipo.length === 0 && <li className="text-xs text-slate-500">Sem dados no período.</li>}
-            {relatorio.porTipo.map((item) => (
-              <li key={item.chave}>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-700">{CONFIG_TIPO[item.chave]?.label ?? item.chave}</span>
-                  <span className="tabular-nums text-slate-600">{item.total}</span>
-                </div>
-                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className={cx("h-full rounded-full", CONFIG_TIPO[item.chave]?.cor ?? "bg-slate-500")}
-                    style={{ width: `${(item.total / maiorTipo) * 100}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
+            <h3 className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Meio de envio</h3>
+            <ul className="mt-2 space-y-2">
+              {relatorio.porMeio.map((item) => (
+                <li key={item.chave} className="flex items-center justify-between border-b border-slate-100 pb-2 text-xs">
+                  <span className="text-slate-700">{CONFIG_MEIO[item.chave] ?? item.chave}</span>
+                  <span className="tabular-nums font-semibold text-slate-800">{item.total}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
 
-        <Card titulo="Por situação" subtitulo="Posição de tramitação no período">
-          <ul className="space-y-2">
-            {relatorio.porStatus.length === 0 && <li className="text-xs text-slate-500">Sem dados no período.</li>}
-            {relatorio.porStatus.map((item) => (
-              <li key={item.chave} className="flex items-center justify-between border-b border-slate-100 pb-2 text-xs">
-                <span className="text-slate-700">{CONFIG_STATUS[item.chave]?.label ?? item.chave}</span>
-                <span className="tabular-nums font-semibold text-slate-800">{item.total}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="grid gap-5 xl:grid-cols-3">
+          <Card titulo="Por interessado" subtitulo="Interessados que mais aparecem no período" className="xl:col-span-2">
+            <ul className="grid gap-x-10 gap-y-3 md:grid-cols-2">
+              {relatorio.porInteressado.length === 0 && (
+                <li className="text-xs text-slate-500">Sem dados no período.</li>
+              )}
+              {relatorio.porInteressado.map((item) => (
+                <li key={item.chave}>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="truncate pr-2 font-medium text-slate-700">{item.chave}</span>
+                    <span className="tabular-nums text-slate-600">{item.total}</span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-slate-700"
+                      style={{ width: `${(item.total / maiorInteressado) * 100}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
 
-          <h3 className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Meio de envio</h3>
-          <ul className="mt-2 space-y-2">
-            {relatorio.porMeio.map((item) => (
-              <li key={item.chave} className="flex items-center justify-between border-b border-slate-100 pb-2 text-xs">
-                <span className="text-slate-700">{CONFIG_MEIO[item.chave] ?? item.chave}</span>
-                <span className="tabular-nums font-semibold text-slate-800">{item.total}</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+          <Card titulo="Por responsável" subtitulo="Quem mais expediu no período">
+            <ul className="space-y-2">
+              {relatorio.porResponsavel.length === 0 && <li className="text-xs text-slate-500">Sem dados no período.</li>}
+              {relatorio.porResponsavel.map((item) => (
+                <li key={item.chave} className="flex items-center justify-between border-b border-slate-100 pb-2 text-xs">
+                  <span className="text-slate-700">{item.chave}</span>
+                  <span className="tabular-nums font-semibold text-slate-800">{item.total}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
 
-        <Card titulo="Por interessado" subtitulo="Interessados que mais aparecem no período">
-          <ul className="space-y-3">
-            {relatorio.porInteressado.length === 0 && (
-              <li className="text-xs text-slate-500">Sem dados no período.</li>
-            )}
-            {relatorio.porInteressado.map((item) => (
-              <li key={item.chave}>
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate pr-2 font-medium text-slate-700">{item.chave}</span>
-                  <span className="tabular-nums text-slate-600">{item.total}</span>
-                </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full bg-slate-700"
-                    style={{ width: `${(item.total / maiorInteressado) * 100}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
         <Card titulo="Série mensal" subtitulo="Expedições por mês no período filtrado">
           {relatorio.porMes.length === 0 ? (
             <p className="text-xs text-slate-500">Sem dados no período.</p>
           ) : (
-            <div className="flex h-48 items-end gap-3">
+            <div className="flex h-48 items-end gap-3 overflow-hidden">
               {relatorio.porMes.map((item) => {
                 const [ano, mes] = item.chave.split("-");
                 return (
@@ -180,26 +208,19 @@ export default async function RelatoriosPage({ searchParams }: Props) {
           )}
         </Card>
 
-        <Card titulo="Por responsável" subtitulo="Quem mais expediu no período">
-          <ul className="space-y-2">
-            {relatorio.porResponsavel.length === 0 && <li className="text-xs text-slate-500">Sem dados no período.</li>}
-            {relatorio.porResponsavel.map((item) => (
-              <li key={item.chave} className="flex items-center justify-between border-b border-slate-100 pb-2 text-xs">
-                <span className="text-slate-700">{item.chave}</span>
-                <span className="tabular-nums font-semibold text-slate-800">{item.total}</span>
-              </li>
-            ))}
-          </ul>
+        <Card
+          titulo="Detalhamento"
+          subtitulo={`Prévia de ${resultado.linhas.length} de ${resultado.total} registro(s) — a impressão/PDF inclui o período completo`}
+          espacamento="p-0"
+          acoes={
+            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 ring-1 ring-inset ring-brand-200">
+              impressão: só detalhamento · A4 econômico
+            </span>
+          }
+        >
+          <TabelaDocumentos documentos={resultado.linhas} />
         </Card>
       </div>
-
-      <Card
-        titulo="Detalhamento"
-        subtitulo="Primeiros 20 registros do período filtrado — use o CSV para o extrato completo"
-        espacamento="p-0"
-      >
-        <TabelaDocumentos documentos={resultado.linhas} />
-      </Card>
     </div>
   );
 }

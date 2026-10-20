@@ -484,3 +484,64 @@ curl -X POST https://SEU-DOMINIO/api/numeracao -H 'Content-Type: application/jso
 # conferir as sequências de 2027
 curl -s "https://SEU-DOMINIO/api/documentos/proximo-numero?ano=2027" | python -m json.tool
 ```
+
+---
+
+---
+
+## Impressão do detalhamento — rota dedicada, A4 econômico
+
+A impressão **não** usa o CSS da tela de relatórios. Existe uma página própria:
+
+```
+/relatorios/imprimir?de=2026-05-01&ate=2026-06-30&tipo=OFICIO&movimentacao=EXPEDICAO
+```
+
+Ela aceita os mesmos filtros dos relatórios e entrega **somente o detalhamento do período**.
+
+### Por que uma rota dedicada
+
+| Motivo | Efeito prático |
+|---|---|
+| Nada de painel/gráficos no papel | o conteúdo é só a listagem |
+| Busca sem paginação (`pageSize` ignorado) | o PDF leva o período **completo**, não os 20 da tela |
+| Cabeçalho em uma faixa | a folha fica quase toda para os registros |
+| Abre em nova aba com os filtros na URL | o documento é reproduzível e pode ser enviado por link |
+
+### O que sai no papel
+
+1. **Faixa única de cabeçalho**: brasão (34 px) + nome da unidade + “Detalhamento de Expedientes” + período, filtros aplicados e data/hora de emissão;
+2. **Resumo em duas linhas**: `24 documentos · 24 expedições · 0 recebimentos · 24 páginas` e a contagem por espécie;
+3. **Tabela**: `#`, `Número`, `Mov.`, `Data`, `Assunto`, `Interessado`, `Nº processo`, `Situação`, `Pág.`, `Anex.` com linha de **totais**;
+4. **Rodapé**: unidade/local e contagem de registros.
+
+Não há assinatura nem gráficos — o foco é a listagem.
+
+### Otimizações de papel
+
+- `@page { size: A4 portrait; margin: 10mm 8mm }`;
+- fonte de **8,2 px**, entrelinha 1,2 e padding de 1 px;
+- **cabeçalho repetido** em cada página (`table-header-group`);
+- linhas com `break-inside: avoid` (nenhum registro cortado entre folhas);
+- zebra discreta (`#f8fafc`) para leitura sem gastar tinta;
+- assunto limitado a 2 linhas para manter a altura constante;
+- rodapé fixo na última faixa da página.
+
+Referência: **212 registros ≈ 3 a 4 folhas**.
+
+### Como usar
+
+1. **Relatórios** → aplique período e filtros;
+2. clique em **🖨 Imprimir / PDF** (abre a rota dedicada em nova aba);
+3. a caixa de impressão abre automaticamente → **Salvar como PDF** ou impressora;
+4. o botão *Imprimir / Salvar PDF* dentro da página permite reabrir a caixa; *Voltar aos relatórios* retorna com os filtros preservados.
+
+O **CSV** continua no bloco de filtros para planilha.
+
+### Arquivos
+
+- `src/app/relatorios/imprimir/page.tsx` — documento de impressão (server component);
+- `src/components/impressao/TabelaDocumentosImpressao.tsx` — tabela, resumo e totais;
+- `src/components/impressao/AutoImprimir.tsx` — abre a caixa de impressão ao carregar;
+- `src/components/BotaoImprimirRelatorio.tsx` — link com os filtros atuais;
+- `src/app/globals.css` — `.pagina-documento`, `.folha-detalhamento`, `.cabecalho-detalhamento`, `.tabela-impressao`.

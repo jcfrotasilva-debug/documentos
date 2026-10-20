@@ -46,39 +46,287 @@ body {
   background-clip: content-box;
 }
 
+/* ================================================================== */
+/* Página de impressão do detalhamento (/relatorios/imprimir)          */
+/* Documento enxuto: cabeçalho de uma faixa + tabela + rodapé.         */
+/* ================================================================== */
+
+.pagina-documento {
+  background: #f8fafc;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+/* Na tela, a página de impressão cobre a aplicação (sem menu/atalhos). */
+@media screen {
+  body:has(.pagina-documento) aside,
+  body:has(.pagina-documento) header.app-header,
+  body:has(.pagina-documento) footer {
+    display: none !important;
+  }
+  body:has(.pagina-documento) .lg\:pl-64 {
+    padding-left: 0 !important;
+  }
+  body:has(.pagina-documento) .app-main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}
+
+.barra-impressao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 210mm;
+  margin: 0 auto 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 14px;
+}
+
+.folha-detalhamento {
+  max-width: 210mm;
+  margin: 0 auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12mm 10mm;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* Cabeçalho em UMA faixa: brasão + órgão/título + contexto do período. */
+.cabecalho-detalhamento {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1.2pt solid #0f172a;
+}
+
+.brasao-mini {
+  height: 34px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.monograma-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1pt solid #0f172a;
+  border-radius: 50%;
+  font-size: 6.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cabecalho-detalhamento .identificacao {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.cabecalho-detalhamento .orgao {
+  font-size: 8.6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #0f172a;
+}
+
+.cabecalho-detalhamento .titulo {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #0f172a;
+}
+
+.cabecalho-detalhamento .contexto {
+  text-align: right;
+  font-size: 7.8px;
+  line-height: 1.3;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.sem-registros {
+  margin: 18px 0;
+  text-align: center;
+  font-size: 9px;
+  color: #334155;
+}
+
+.rodape-detalhamento {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 3px;
+  border-top: 0.4pt solid #94a3b8;
+  font-size: 7px;
+  color: #64748b;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tabela de impressão do detalhamento                                 */
+/* Compacta de propósito: fonte pequena, entrelinha curta e colunas    */
+/* fixas para caber o máximo de registros por folha A4.                */
+/* ------------------------------------------------------------------ */
+.tabela-impressao {
+  width: 100%;
+  margin-top: 4px;
+  border-collapse: collapse;
+  font-size: 8.2px;
+  line-height: 1.2;
+  color: #0f172a;
+  table-layout: fixed;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.tabela-impressao thead {
+  display: table-header-group; /* repete o cabeçalho em cada página */
+}
+
+.tabela-impressao tfoot {
+  display: table-row-group;
+}
+
+.tabela-impressao tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.tabela-impressao th,
+.tabela-impressao td {
+  border: 0.4pt solid #94a3b8;
+  padding: 1px 2px;
+  vertical-align: top;
+  overflow: hidden;
+}
+
+.tabela-impressao th {
+  background: #e2e8f0;
+  font-size: 7.4px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-align: left;
+}
+
+.tabela-impressao tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.tabela-impressao td.assunto {
+  /* limita a 2 linhas para não estourar a altura da linha */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tabela-impressao td.truncar {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.tabela-impressao .rodape-total {
+  background: #f1f5f9;
+  font-weight: 700;
+  border-top: 0.8pt solid #475569;
+}
+
+.resumo-impressao {
+  margin: 3px 0 0;
+  font-size: 8.2px;
+  color: #334155;
+  line-height: 1.35;
+}
+
+.rodape-impressao {
+  margin-top: 10px;
+  padding-top: 4px;
+  border-top: 0.4pt solid #94a3b8;
+  font-size: 7.8px;
+  color: #475569;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.assinatura-impressao {
+  min-width: 200px;
+  border-top: 0.5pt solid #0f172a;
+  padding-top: 2px;
+  text-align: center;
+  font-size: 7.8px;
+  color: #0f172a;
+}
+
+.assinatura-impressao span {
+  display: block;
+}
+
+.assinatura-impressao span:first-child {
+  font-weight: 600;
+}
+
 /* Impressão de documentos oficiais */
 @media print {
   body {
     background: #fff !important;
-    font-size: 11pt;
   }
   .no-print,
   aside,
   header.app-header {
     display: none !important;
   }
-  .lg\:pl-64 {
-    padding-left: 0 !important;
-  }
-  .print-area, .app-main {
+  .print-area {
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
     margin: 0 !important;
     max-width: 100% !important;
   }
-  .print-only {
-    display: block !important;
+  .app-main {
+    padding: 0 !important;
   }
-  /* Mantém as cores em alguns navegadores */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
+  /* Margens enxutas: mais área útil por folha (economia de papel). */
   @page {
-    margin: 15mm 12mm;
+    size: A4 portrait;
+    margin: 10mm 8mm;
   }
-  section {
-    break-inside: avoid;
+
+  /* Documento de detalhamento: a folha inteira fica para a tabela. */
+  .pagina-documento {
+    background: #fff !important;
+    padding: 0 !important;
+    min-height: auto !important;
+  }
+  .folha-detalhamento {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .rodape-detalhamento {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
   }
 }

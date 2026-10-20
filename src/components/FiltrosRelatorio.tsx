@@ -99,7 +99,17 @@ export function FiltrosRelatorio({
             Limpar
           </button>
           <button type="button" className={botaoClasses("secundario")} onClick={exportar}>
-            ⭳ Exportar CSV
+            ⭳ CSV
+          </button>
+          <button type="button" className={botaoClasses("primario")} onClick={() => {
+            const params = new URLSearchParams();
+            Object.entries(form).forEach(([chave, valor]) => {
+              if (!valor || valor === "TODOS") return;
+              params.set(chave, valor);
+            });
+            window.open(`/relatorios/imprimir?${params.toString()}`, '_blank');
+          }}>
+            🖨 Imprimir Relatório
           </button>
         </div>
       </div>
